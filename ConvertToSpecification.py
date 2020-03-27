@@ -24,7 +24,7 @@ def makeConv2DMessage(conv_layer, layer_callback):
 
     layer_callback.type                 = 1
     layer_callback.conv.out_channels    = conv_layer.out_channels
-    layer_callback.conv.in_channels     = conv_layer.out_channels
+    layer_callback.conv.in_channels     = conv_layer.in_channels
     layer_callback.conv.height          = kernel_size[0]
     layer_callback.conv.width           = kernel_size[1]
     layer_callback.conv.stride          = stride[0]
@@ -87,62 +87,69 @@ def makeDropoutMessage(dropout_layer, layer_callback):
     layer_callback.drop.p   = dropout_layer.p 
 
 
-
-def createVGGSpecification(filename):
-    ## VGG Model ##
-    vgg19 = models.vgg19(pretrained=True)
-
-    net_vgg19 = network_pb2.Network()
+def createProtoSpecification(model, filename):
+    net = network_pb2.Network()
     num_layers = 0
 
     # Iterate through the layers #
-    for layer in vgg19.children():
+    for layer in model.children():
             for child in layer.modules():
                 if isinstance(child ,nn.Conv2d):
                     #Make the conv message
-                    convLayer = net_vgg19.layers.add() 
+                    convLayer = net.layers.add() 
                     makeConv2DMessage(child, convLayer)
                     num_layers+=1
                 
                 elif isinstance(child,nn.MaxPool2d):
                     #Make the pool message
-                    poolLayer = net_vgg19.layers.add()
+                    poolLayer = net.layers.add()
                     makePool2DMessage(child,poolLayer)
                     num_layers+=1
                 
                 elif isinstance(child,nn.AdaptiveAvgPool2d):
                     #Make the adaptive pool message
-                    apoolLayer = net_vgg19.layers.add()
+                    apoolLayer = net.layers.add()
                     makePool2DMessage(child, apoolLayer, avg=True, adaptive=True)
                     num_layers+=1
                 
                 elif isinstance(child,nn.ReLU):
                     #Make the activation message
-                    reluact = net_vgg19.layers.add()
+                    reluact = net.layers.add()
                     makeReLUMessage(reluact)
                     num_layers+=1
 
                 elif isinstance(child,nn.Linear):
                     #Make the linear layer message
-                    linearLayer = net_vgg19.layers.add()
+                    linearLayer = net.layers.add()
                     makeFCMessage(child, linearLayer)
                     num_layers+=1
 
                 elif isinstance(child,nn.Dropout):
                     #Make the DropOut layer message
-                    dropLayer = net_vgg19.layers.add()
+                    dropLayer = net.layers.add()
                     makeDropoutMessage(child, dropLayer)
                     num_layers+=1
     
-    net_vgg19.num_layers = num_layers
-    
+    net.num_layers = num_layers
+
     #Store in Pre-trained Models
     filename = PRE_TRAINED_DIR+filename
     f = open(filename, "wb")
-    f.write(net_vgg19.SerializeToString())
+    f.write(net.SerializeToString())
     f.close()
 
+def createVGGSpecification(filename):
+    ## VGG Model ##
+    vgg19 = models.vgg19(pretrained=True)
+    createProtoSpecification(vgg19, filename)
+
+def createAlexNetSpecification(filename):
+    ## VGG Model ##
+    alex = models.alexnet(pretrained=True)
+    createProtoSpecification(alex, filename)
 
 if __name__ == "__main__":
     createVGGSpecification("vgg19.pb")
+    createAlexNetSpecification("alexnet.pb")
+
     
