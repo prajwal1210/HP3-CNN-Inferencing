@@ -1,0 +1,5 @@
+## .pb files ##
+**/*.pb
+
+## pycache ##
+**/__pycache__/

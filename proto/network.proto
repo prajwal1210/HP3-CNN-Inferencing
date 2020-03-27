@@ -1,0 +1,87 @@
+syntax = "proto2";
+
+package DeepNet;
+
+message ConvLayer2D {
+  required int32 out_channels = 2;
+  required int32 in_channels = 3;
+  required int32 height = 4;
+  required int32 width = 5;
+  required int32 stride = 6;
+  required int32 padding = 7;
+  optional int32 dilation = 8;
+  repeated float weight = 9;
+  required bool bias_present = 10 [default = false];
+  repeated float bias = 11;
+}
+
+message Activation {
+  enum ActivationType {
+    RELU = 0;
+    SIGMOID = 1;
+  }
+  required ActivationType type = 1;
+}
+
+message PoolLayer2D {
+  enum PoolType {
+    MAX = 0;
+    AVG = 1;
+  }
+  required PoolType type = 1;
+  required int32 kernel_size = 2; 
+  required int32 stride = 3; 
+  required int32 padding = 4;
+  required int32 dilation = 5;
+}
+
+message AdaptivePoolLayer2D {
+  enum PoolType {
+    MAX = 0;
+    AVG = 1;
+  }
+  required PoolType type = 1;
+  required int32 out_x = 2; 
+  required int32 out_y = 3; 
+}
+
+
+message LinearLayer {
+  required int32 in_nodes = 1; 
+  required int32 out_nodes = 2;
+  repeated float weight = 3;
+  required bool bias_present = 4 [default = false];
+  repeated float bias = 5;
+}
+
+message DropOutLayer {
+  required float p = 1;
+}
+
+
+message Layer {
+  enum LayerType {
+    LINEAR = 0;
+    CONV = 1;
+    POOL = 2;
+    ADAPTIVE_POOL = 3;
+    DROPUT = 4;
+    ACTIVATION = 5;
+  }
+
+  required LayerType type = 1;
+  oneof LayerComponent {
+    LinearLayer linear = 2;
+    ConvLayer2D conv = 3;
+    PoolLayer2D pool = 4;
+    AdaptivePoolLayer2D apool = 5;
+    DropOutLayer drop = 6;
+    Activation act  = 7;
+  }
+
+}
+
+message Network {
+  required int32 num_layers = 1;
+  repeated Layer layers = 2;
+}
