@@ -6,3 +6,9 @@
 
 ## vscode ##
 **/.vscode/
+
+## Executables ##
+**/*.out
+
+## ghc files ##
+**/*.h.gch
