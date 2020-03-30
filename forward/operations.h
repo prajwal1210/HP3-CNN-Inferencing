@@ -19,6 +19,17 @@
     }                                                        \
 }
 
+#define checkCudaErrors(expression)                          \
+{                                                            \
+    cublasStatus_t status = (expression);                     \
+    if (status != 0) {                                       \
+      std::cerr << "Error on line " << __LINE__ << ": "      \
+                << status << std::endl;                      \
+      std::exit(EXIT_FAILURE);                               \
+    }                                                        \
+}
+
+
 
 /*Class for Convolution Operation*/
 class Conv2D
@@ -39,6 +50,9 @@ public:
     float* weights;         //Weights of the conv layer
     bool bias_present;      //Bool to represent whether bias is present or not
     float* bias;            //Bias of the conv layer
+
+    cudnnTensorFormat_t data_format = CUDNN_TENSOR_NCHW;
+    cudnnTensorFormat_t param_format = CUDNN_TENSOR_NCHW;
 
     cudnnHandle_t cudnn;                                    //CUDNN Descriptor
     cudnnTensorDescriptor_t input_descriptor;               //Input Descriptor
@@ -95,7 +109,8 @@ public:
     int stride_y;           //Stride in Y
     int input_height;       //Input Height
     int input_width;        //Input Width
-
+    
+    cudnnTensorFormat_t data_format = CUDNN_TENSOR_NCHW;
 
     cudnnHandle_t cudnn;                                    //CUDNN Descriptor
     cudnnTensorDescriptor_t input_descriptor;               //Input Descriptor
@@ -132,7 +147,7 @@ typedef enum{
     t_sigmoid
 } actType;
 
-/*Class for Pooling Operation*/
+/*Class for Activation Operation*/
 class Activation
 {            
 //Data is in NHWC format
@@ -143,6 +158,7 @@ public:
     int input_height;       //Input Height
     int input_width;        //Input Width
 
+    cudnnTensorFormat_t data_format = CUDNN_TENSOR_NCHW;
 
     cudnnHandle_t cudnn;                                    //CUDNN Descriptor
     cudnnTensorDescriptor_t output_descriptor;              //Output Descriptor
@@ -168,6 +184,42 @@ protected:
 };
 
 
+/*Class for Linear Layer*/
+class Linear
+{            
+//Data is in NHWC format
+public:
+    int batchsize;          //Batchsize of the training data
+    int out_nodes;          //Number of output nodes
+    int in_nodes;           //Number of input nodes
+    float* weight;         //Weights of the layer - Out_nodes X In_nodes
+    bool bias_present;      //Bool to know whether bias is present or not
+    float* bias;            //Bias of the Layer - Out_nodes X 1
+
+    cudnnTensorFormat_t data_format = CUDNN_TENSOR_NCHW;
+
+    cudnnHandle_t cudnn;                                //CUDNN Descriptor
+    cublasHandle_t cublas;                              //CUBLAS Descriptor
+    cudnnTensorDescriptor_t bias_input_descriptor;      //Input Descriptor for Bias Addition
+    cudnnTensorDescriptor_t bias_output_descriptor;     //Output Descriptor for Bias Addition
+    cudnnTensorDescriptor_t bias_descriptor;            //Bias Descriptor for Bias Addition
+
+    
+    /*Constructors*/
+    Linear(int batchsize, int out_nodes, int in_nodes, cublasHandle_t cublas);
+    ~Linear();
+
+    /*Get Output Dimensions*/
+    void GetOutputDims(int* out_n, int* out_h, int* out_w, int* out_c);
+
+    /*Weight and Bias Initializers*/
+    void SetWeights(float* weights);
+    void SetBias(float* bias, cudnnHandle_t cudnn);
+
+    /*Forward Pass*/
+    float* LinearForward(float* input);
+
+};
 
 
 

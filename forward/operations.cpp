@@ -38,7 +38,7 @@ void Conv2D::CreateDescriptors(){
 
     checkCUDNN(cudnnCreateTensorDescriptor(&(this->input_descriptor)));
     checkCUDNN(cudnnSetTensor4dDescriptor(this->input_descriptor,
-                                      /*format=*/CUDNN_TENSOR_NHWC,
+                                      /*format=*/this->data_format,
                                       /*dataType=*/CUDNN_DATA_FLOAT,
                                       /*batch_size=*/this->batchsize,
                                       /*channels=*/this->in_channels,
@@ -48,7 +48,7 @@ void Conv2D::CreateDescriptors(){
     checkCUDNN(cudnnCreateFilterDescriptor(&(this->kernel_descriptor)));
     checkCUDNN(cudnnSetFilter4dDescriptor(this->kernel_descriptor,
                                       /*dataType=*/CUDNN_DATA_FLOAT,
-                                      /*format=*/CUDNN_TENSOR_NCHW,                     //CHECK THIS IF THE PROTO HAS CHW
+                                      /*format=*/this->param_format,                     //CHECK THIS IF THE PROTO HAS CHW
                                       /*out_channels=*/this->out_channels,
                                       /*in_channels=*/this->in_channels,
                                       /*kernel_height=*/this->h,
@@ -69,7 +69,7 @@ void Conv2D::CreateDescriptors(){
     pair<int,int> out_dim = this->GetOutputDims();
     checkCUDNN(cudnnCreateTensorDescriptor(&(this->output_descriptor)));
     checkCUDNN(cudnnSetTensor4dDescriptor(this->output_descriptor,
-                                      /*format=*/CUDNN_TENSOR_NHWC,
+                                      /*format=*/this->data_format,
                                       /*dataType=*/CUDNN_DATA_FLOAT,
                                       /*batch_size=*/this->batchsize,
                                       /*channels=*/this->out_channels,
@@ -107,7 +107,7 @@ void Conv2D::SetBias(float* bias){
 
     checkCUDNN(cudnnCreateTensorDescriptor(&(this->convbias_descriptor)));
     checkCUDNN(cudnnSetTensor4dDescriptor(this->convbias_descriptor,
-                                      /*format=*/CUDNN_TENSOR_NCHW,                 //CHECK THIS IF THE PROTO HAS CHW
+                                      /*format=*/this->param_format,                 //CHECK THIS IF THE PROTO HAS CHW
                                       /*dataType=*/CUDNN_DATA_FLOAT,
                                       /*batch_size=*/1,
                                       /*channels=*/this->out_channels,
@@ -284,7 +284,7 @@ void Pool::InitalizeAttributes(int type, int batchsize, int in_channels, int inp
 void Pool::CreateDescriptors(){
     checkCUDNN(cudnnCreateTensorDescriptor(&(this->input_descriptor)));
     checkCUDNN(cudnnSetTensor4dDescriptor(this->input_descriptor,
-                                      /*format=*/CUDNN_TENSOR_NHWC,
+                                      /*format=*/this->data_format,
                                       /*dataType=*/CUDNN_DATA_FLOAT,
                                       /*batch_size=*/this->batchsize,
                                       /*channels=*/this->in_channels,
@@ -306,7 +306,7 @@ void Pool::CreateDescriptors(){
     GetOutputDims(&out_n, &out_h, &out_w, &out_c);
     checkCUDNN(cudnnCreateTensorDescriptor(&(this->output_descriptor)));
     checkCUDNN(cudnnSetTensor4dDescriptor(this->output_descriptor,
-                                      /*format=*/CUDNN_TENSOR_NHWC,
+                                      /*format=*/this->data_format,
                                       /*dataType=*/CUDNN_DATA_FLOAT,
                                       /*batch_size=*/this->batchsize,
                                       /*channels=*/this->in_channels,
@@ -395,7 +395,7 @@ void Activation::CreateDescriptors(){
     //Input Dimensions = Output Dimensions
     checkCUDNN(cudnnCreateTensorDescriptor(&(this->output_descriptor)));
     checkCUDNN(cudnnSetTensor4dDescriptor(this->output_descriptor,
-                                      /*format=*/CUDNN_TENSOR_NHWC,
+                                      /*format=*/this->data_format,
                                       /*dataType=*/CUDNN_DATA_FLOAT,
                                       /*batch_size=*/this->batchsize,
                                       /*channels=*/this->in_channels,
@@ -446,6 +446,136 @@ float* Activation::ActivationForward(float* input){
 
     //Free the temporary memory
     cudaFree(d_output);
+ 
+    return h_output;
+
+}
+
+
+Linear::Linear(int batchsize, int out_nodes, int in_nodes, cublasHandle_t cublas){
+    this->batchsize = batchsize;
+    this->out_nodes = out_nodes;
+    this->in_nodes = in_nodes;
+    this->bias_present = false;
+    this->cublas = cublas;
+}
+
+Linear::~Linear(){
+    if(this->bias_present){
+        cudnnDestroyTensorDescriptor(this->bias_input_descriptor);
+        cudnnDestroyTensorDescriptor(this->bias_output_descriptor);
+        cudnnDestroyTensorDescriptor(this->bias_descriptor);
+    }
+}
+
+void Linear::SetWeights(float* weights){
+    this->weight = weights;
+}
+
+void Linear::SetBias(float* bias, cudnnHandle_t cudnn){
+    this->bias_present = true;
+    this->bias = bias;
+
+    this->cudnn = cudnn;
+
+    //Bias Input Descriptor
+    checkCUDNN(cudnnCreateTensorDescriptor(&(this->bias_input_descriptor)));
+    checkCUDNN(cudnnSetTensor4dDescriptor(this->bias_input_descriptor,
+                                      /*format=*/this->data_format,
+                                      /*dataType=*/CUDNN_DATA_FLOAT,
+                                      /*batch_size=*/this->batchsize,
+                                      /*channels=*/this->out_nodes,
+                                      /*image_height=*/1,
+                                      /*image_width=*/1));
+
+    //Bias Output Descriptor
+    checkCUDNN(cudnnCreateTensorDescriptor(&(this->bias_output_descriptor)));
+    checkCUDNN(cudnnSetTensor4dDescriptor(this->bias_output_descriptor,
+                                      /*format=*/this->data_format,
+                                      /*dataType=*/CUDNN_DATA_FLOAT,
+                                      /*batch_size=*/this->batchsize,
+                                      /*channels=*/this->out_nodes,
+                                      /*image_height=*/1,
+                                      /*image_width=*/1));
+
+
+    //Create Bias Descriptor
+    checkCUDNN(cudnnCreateTensorDescriptor(&(this->bias_descriptor)));
+    checkCUDNN(cudnnSetTensor4dDescriptor(this->bias_descriptor,
+                                      /*format=*/this->data_format,                 //CHECK THIS IF THE PROTO HAS CHW
+                                      /*dataType=*/CUDNN_DATA_FLOAT,
+                                      /*batch_size=*/1,
+                                      /*channels=*/this->out_nodes,
+                                      /*image_height=*/1,
+                                      /*image_width=*/1));
+
+}
+
+void Linear::GetOutputDims(int* n, int* c, int* h, int* w){
+    *n = this->batchsize;
+    *c = this->out_nodes;
+    *h = 1;
+    *w = 1;
+}
+
+float* Linear::LinearForward(float* input){
+    int input_bytes = this->batchsize * this->in_nodes * sizeof(float);
+    int output_bytes = this->batchsize * this->out_nodes * sizeof(float);
+    int weight_bytes = this->out_nodes * this->in_nodes * sizeof(float);
+
+    cout << "Input - ( " << this->batchsize << ", " << this->in_nodes << ", " << 1 << ", " << 1 << " )" << endl;
+    cout << "Output - ( " << this->batchsize << ", " << this->out_nodes << ", " << 1 << ", " << 1 << " )" << endl;
+
+    float* d_input{nullptr};
+    cudaMalloc(&d_input, input_bytes);
+    cudaMemcpy(d_input, input, input_bytes, cudaMemcpyHostToDevice);
+
+
+    float* d_output{nullptr};
+    cudaMalloc(&d_output, output_bytes);
+    cudaMemset(d_output, 0, output_bytes);
+
+    float* d_weight{nullptr};
+    cudaMalloc(&d_weight, weight_bytes);
+    cudaMemcpy(d_weight, this->weight, weight_bytes, cudaMemcpyHostToDevice);
+
+    const float alpha = 1, beta = 0;
+    checkCudaErrors(cublasSgemm(this->cublas,                                       //CUBLAS works in column major form              
+                                CUBLAS_OP_T, CUBLAS_OP_N,                           //Weights[Out_nodes X In_nodes] in C fashion (row major) => Weights[In_Nodes X Out_Nodes] in CUBLAS input
+                                this->out_nodes, this->batchsize, this->in_nodes,   //Input[Batchsize X In_nodes] in C fashion (row major) => Input[In_Nodes X Batchize] in CUBLAS input
+                                &alpha,                                             //Output[Out_nodes X Batchsize] in CUBLAS = Weights[In_Nodes X Out_Nodes]^T * Input[In_Nodes X Batchize]
+                                d_weight, this->in_nodes,                           //Therefore, m = Out_nodes, n = Batch_Size, k = In_nodes (Weights^T)
+                                d_input, this->in_nodes,                            //LDA = In_nodes (Weights), LDB = In_Nodes (Input), LDC = Out_Nodes
+                                &beta,                                              //Output[Out_nodes X Batchsize] in CUBLAS => Output[Batchsize X Out_nodes] in C
+                                d_output, this->out_nodes));
+    
+    int bias_bytes = this->out_nodes * sizeof(float);
+    float* d_bias{nullptr};
+
+    if(this->bias_present){
+        int bias_bytes = this->out_nodes * sizeof(float);
+        cudaMalloc(&d_bias, bias_bytes);
+        cudaMemcpy(d_bias, this->bias, bias_bytes, cudaMemcpyHostToDevice);
+        
+        checkCUDNN(cudnnAddTensor(this->cudnn, 
+                                &alpha,
+                                this->bias_descriptor,
+                                d_bias, 
+                                &alpha,
+                                this->bias_output_descriptor, 
+                                d_output));
+    }
+
+    float* h_output = new float[output_bytes];
+    cudaMemcpy(h_output, d_output, output_bytes, cudaMemcpyDeviceToHost);
+
+    //Free the temporary memory
+    cudaFree(d_weight);
+    cudaFree(d_input);
+    cudaFree(d_output);
+    if(this->bias_present){
+        cudaFree(d_bias);
+    }
  
     return h_output;
 
