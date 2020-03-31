@@ -68,6 +68,7 @@ def makeFCMessage(fc_layer, layer_callback):
     layer_callback.type = 0
     layer_callback.linear.in_nodes  = in_features
     layer_callback.linear.out_nodes = out_features
+    # Weights are stored in out_features X in_features format
     layer_callback.linear.weight[:] = weights
 
     if bias_present:
