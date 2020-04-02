@@ -1,3 +1,4 @@
+%%cuda --name /content/src/direct_convolution.cu
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -7,14 +8,17 @@
 # // whether X,Y,W are float or int
 
 __global__ 
-void direct_convolution( int C , int H , int W , int M , int K , int H_out , int W_out ,  int W_grid , int* X, int* W_filter, int* Y)
+void direct_convolution( int C , int H , int W , int M , int K , int P, int S , int H_out , int W_out ,  int W_grid , int* X, int* W_filter, int* Y)
 {
-    int n , m , h , w , c , p , q;
+    int n , m , h , w , c , p , q ;
     n = blockIdx.x ;
     m = blockIdx.y ;
     h = blockIdx.z / W_grid + threadIdx.y;
     w = blockIdx.z % W_grid + threadIdx.x;
 
+    H = H+P;
+    W = W+P;
+ 
     int temp=0;
     for( c = 0 ; c < C ; c++ )
     {
@@ -22,7 +26,7 @@ void direct_convolution( int C , int H , int W , int M , int K , int H_out , int
         {
             for( q = 0 ; q < K ; q++ )
             {
-                temp = temp + X[ n*(C*H*W) + c*(H*W) + (h+p)*(W) + (w+q)] * W_filter[ m*(C*K*K) + c*(K*K) + p*(K) + q] ;
+                temp = temp + X[ n*(C*H*W) + c*(H*W) + (h*S+p)*(W) + (w*S+q)] * W_filter[ m*(C*K*K) + c*(K*K) + p*(K) + q] ;
             }
         }
     }
@@ -35,7 +39,7 @@ int main(void)
 {
 
   cudaError_t err = cudaSuccess;
-  int N,C,M,K,H,W;
+  int N,C,M,K,H,W,P,S;
   printf("Enter the batch size : ");
   scanf("%d",&N);
   printf("\nEnter the channel size : ");
@@ -48,18 +52,24 @@ int main(void)
   scanf("%d",&M);
   printf("\nEnter the kernel width(same as height) :  ");
   scanf("%d",&K);
+  printf("\nEnter the padding size : ");
+  scanf("%d",&P);
+  printf("\nEnter the striding size : ");
+  scanf("%d",&S);
  
-  int size_input_matrix = N * C * H * W * sizeof(int) ;
+  int size_input_matrix_0 = N * C * H * W * sizeof(int) ;
+  int size_input_matrix = N * C * (H+P) * (W+P) * sizeof(int) ;
   int size_filter_matrix = M * C * K * K * sizeof(int) ;
-  int H_out = H - K + 1;
-  int W_out = W - K + 1;
+  int H_out = (H - K + P + S )/S;
+  int W_out = (W - K + P + S )/S;
   int size_output_matrix = N * M * H_out * W_out * sizeof(int) ;
   
-  int *h_X = (int*)malloc(size_input_matrix );
+  int *X   = (int*)malloc(size_input_matrix_0 );
+  int *h_X = (int*)calloc(size_input_matrix/sizeof(int) , sizeof(int) );
   int *h_Y = (int*)malloc(size_output_matrix );
   int *h_W = (int*)malloc(size_filter_matrix );
  
-  if (h_X == NULL || h_Y == NULL || h_W == NULL )
+  if (h_X == NULL || h_Y == NULL || h_W == NULL || X == NULL )
     {
         fprintf(stderr, "Failed to allocate host vectors!\n");
         exit(EXIT_FAILURE);
@@ -76,7 +86,7 @@ int main(void)
           {
               for( w = 0 ; w < W ; w++)
               {
-                  scanf("%d",&h_X[ n*(C*H*W) + c*(H*W) + h*(W) + w] );
+                  scanf("%d",&X[ n*(C*H*W) + c*(H*W) + h*(W) + w] );
               }
           }
       }
@@ -84,15 +94,32 @@ int main(void)
  
  for(n = 0 ; n < N ; n++ )
   {
+      for(c = 0 ; c < C ; c++ )
+      {
+          for( h = P/2 ; h < H+P/2 ; h++ )
+          {
+              for( w = P/2 ; w < W+P/2 ; w++)
+              {
+                  h_X[ n*(C*(H+P)*(W+P)) + c*((H+P)*(W+P)) + h*(W+P) + w] =  X[ n*(C*H*W) + c*(H*W) + (h-P/2)*(W) + (w-P/2)];
+              }
+          }
+      }
+  }
+
+
+
+
+ for(n = 0 ; n < N ; n++ )
+  {
       printf("n = %d\n",n);
       for(c = 0 ; c < C ; c++ )
       {
           printf(" channel - %d\n",c);
-          for( h = 0 ; h < H ; h++ )
+          for( h = 0 ; h < H+P ; h++ )
           {
-              for( w = 0 ; w < W ; w++)
+              for( w = 0 ; w < W+P ; w++)
               {
-                  printf("%d ",h_X[ n*(C*H*W) + c*(H*W) + h*(W) + w] );
+                  printf("%d ",h_X[ n*(C*(H+P)*(W+P)) + c*((H+P)*(W+P)) + h*(W+P) + w] );
               }
            printf("\n");
           }
@@ -164,7 +191,7 @@ int main(void)
   dim3 block( tile_height , tile_width , 1 );
  
 #  // considering W = H  =>  W_grid = H_grid  
-  direct_convolution<<< grid, block >>>( C, H , W , M , K , H_out , W_out , w_grid , d_X , d_W , d_Y) ;
+  direct_convolution<<< grid, block >>>( C, H , W , M , K , P , S ,  H_out , W_out , w_grid , d_X , d_W , d_Y) ;
 
   err = cudaGetLastError();
 
