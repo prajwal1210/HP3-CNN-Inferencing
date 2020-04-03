@@ -1,9 +1,10 @@
 /************************************************************
- * forward_pass_test.cpp:									*
+ * forward_pass_test.cpp:									                  *
  * This is the C++ script to test the operations.h library 	*
- * 															*
- * Author: Prajwal Singhania								*
+ * 															                            *
+ * Author: Prajwal Singhania								                *
  ************************************************************/
+ 
 #include <cstdio>
 #include <cstdlib>
 #include <cmath>
