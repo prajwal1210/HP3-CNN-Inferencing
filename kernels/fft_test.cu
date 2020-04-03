@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <cuda.h>
 #include <cuda_runtime.h>
-#include<"fft.cu">
+#include <"fft.cu">
 
 int main(){
     int channels = 3;
