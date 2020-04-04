@@ -1,6 +1,8 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <sstream>
+
 #include "network.pb.h"
 
 using namespace std;
@@ -18,17 +20,28 @@ void printNetwork(const DeepNet::Network& myNetwork){
     for(int i=0;i<num;i++){
         const DeepNet::Layer& layer = myNetwork.layers(i);
         DeepNet::Layer_LayerType type = layer.type();
+        cout<< type <<endl;
     }   
 }
 
-int main(int argc, char* argv[]){
-    GOOGLE_PROTOBUF_VERIFY_VERSION;
-    DeepNet::Network myNetwork;
 
-    fstream input(argv[0], ios::in | ios::binary);
-    if (!myNetwork.ParseFromIstream(&input)) {
-      cerr << "Failed to parse address book." << endl;
-      return -1;
-    }    
-    return 0;
+int main() {
+  string s;
+  fstream input("../pretrained-models/vgg19.pb", ios::in | ios::binary);
+  int c = 0;
+
+  string str;
+  if(input) {
+    ostringstream ss;
+    ss << input.rdbuf(); // reading data
+    str = ss.str();
+  }
+
+  DeepNet::Network net;
+  net.ParseFromString(str);
+
+
+  printNetwork(net);
+
+  google::protobuf::ShutdownProtobufLibrary();
 }
