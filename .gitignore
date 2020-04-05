@@ -12,3 +12,9 @@
 
 ## ghc files ##
 **/*.h.gch
+
+## temp files ##
+**/*temp*
+
+## .DS_Store ##
+**/*DS_Store*
