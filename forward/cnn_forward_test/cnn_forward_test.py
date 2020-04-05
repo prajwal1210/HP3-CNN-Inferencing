@@ -8,10 +8,9 @@ import sys
 #Load the Image
 def loadImage(imagePath):
     img = cv2.imread(imagePath,cv2.IMREAD_COLOR).astype(np.float32)
-    res = cv2.resize(img, (255,255))
+    res = cv2.resize(img, (256,256))
     res = cv2.normalize(res, res, 0.0, 1.0, cv2.NORM_MINMAX)
     return res
-
 
 cpp_output = None
 with open("final_out.txt", "r") as f:
@@ -22,12 +21,17 @@ with open("final_out.txt", "r") as f:
 
 cpp_output = np.asarray(cpp_output)
 
-model = models.vgg19(pretrained=True)
-# model = nn.Sequential(*list(vgg19.children())[:2])
-print(model)
+model = None
+if(sys.argv[1] == "vgg"):
+    model = models.vgg19(pretrained=True)
+elif(sys.argv[1] == "alex"):
+    model = models.alexnet(pretrained=True)
+else:
+    print("Please enter the model name - \"vgg\" or \"alex\" as command line argument")
+    exit(1)
 
 #Load the image
-res = loadImage('forward/data/n02118333_27_fox.jpg')
+res = loadImage('../data/n02118333_27_fox.jpg')
 
 #Process the image for feeding it to the model appropriately
 res = np.reshape(res, (1,res.shape[0],res.shape[1],res.shape[2]))
@@ -42,9 +46,7 @@ with torch.no_grad():
     output = output_tensor.numpy()
 
 output = np.reshape(output, (-1,))
-print(output.shape)
-print(cpp_output.shape)
-
 diff = cpp_output - output
 diff = np.abs(diff)
-print (np.max(diff))
+
+print ("Maximum difference between two values of the output layer - %f"%(np.max(diff)))

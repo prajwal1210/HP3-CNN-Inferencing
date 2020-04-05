@@ -1,11 +1,3 @@
-/************************************************************
- * forward.cc:									                            *
- * Test that loads a pretrained network and runs a forward  *
- * pass on it                                               *
- *                                                          *
- * Author: Prajwal Singhania								                *
- ************************************************************/
-
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -28,7 +20,7 @@ int main(int argc, char **argv) {
 
   int batchsize, input_h, input_w, input_c;
   
-  string image_path_s = "forward/data/n02118333_27_fox.jpg";
+  string image_path_s = "../data/n02118333_27_fox.jpg";
   const char* image_path = image_path_s.c_str();
   float* input = sloader.loadSingleColoredImageCHW(image_path, batchsize, input_c, input_h, input_w);
   bool succes = true;
