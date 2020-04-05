@@ -1,10 +1,10 @@
 int main(){
-    int channel = 1;
+    int channel = 3;
     int height = 5;
     int width = 5;
     int kernel_height = 3;
     int kernel_width = 3;
-    /*float input_layer_tmp[channel][height][width]  = {{{0,0,1,0,2},
+    float input_layer_tmp[channel][height][width]  = {{{0,0,1,0,2},
       {1,0,2,0,1},
       {1,0,2,2,0},
       {2,0,0,2,0},
@@ -16,26 +16,26 @@ int main(){
       {1,0,0,1,0},
       {0,1,0,0,0},
       {1,0,2,1,0},
-      {2,2,1,1,1}}};*/
-    float input_layer_tmp[channel][height][width]  = {{{0,0,1,0,2},
+      {2,2,1,1,1}}};
+    /*float input_layer_tmp[channel][height][width]  = {{{0,0,1,0,2},
       {1,0,2,0,1},
       {1,0,2,2,0},
       {2,0,0,2,0},
-      {2,1,2,2,0}}};
+      {2,1,2,2,0}}};*/
     
     float* input_layer = (float *)malloc(channel * height* width * sizeof(float));
     float* kernel = (float *)malloc(channel * kernel_height* kernel_width * sizeof(float));  
 
-    /*float kernel_tmp[channel][kernel_height][kernel_width] = {{{-1,0,1},
+    float kernel_tmp[channel][kernel_height][kernel_width] = {{{-1,0,1},
       {0,0,1},
       {1,-1,1}},{{-1,0,1},
       {1,-1,1},
       {0,1,0}},{{-1,1,1},
       {1,1,0},
-      {0,-1,0}}};*/
-    float kernel_tmp[channel][kernel_height][kernel_width] = {{{-1,0,1},
+      {0,-1,0}}};
+    /*float kernel_tmp[channel][kernel_height][kernel_width] = {{{-1,0,1},
       {0,0,1},
-      {1,-1,1}}};
+      {1,-1,1}}};*/
 
     for(int i = 0; i < channel; i++)
     {
@@ -77,7 +77,7 @@ int main(){
           for(int j = 0; j < out_W; j++)
           {
               //if(abs(actual_result[i + j*height] - expected_result[i][j]) > 0.001 ){
-                printf("%f ",actual_result[i+j*out_H]);
+                printf("%f ",round(actual_result[i+j*out_H]));
               //}
           }
           printf("\n");
