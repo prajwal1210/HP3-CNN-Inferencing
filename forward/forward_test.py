@@ -18,7 +18,6 @@ def showImage(image):
     cv2.destroyAllWindows()
 
 
-
 #Create the kernel
 def createKernel():
     kernel_template = [[1,  1 , 1],[1, -8 , 1],[1,  1, 1]]
@@ -33,7 +32,7 @@ def createKernel():
     h_kernel = np.asarray(h_kernel)
     return h_kernel
 
-
+#Create Weight and Bias for the Linear Layer Testing
 def createWeightAndBias(out_nodes, in_nodes):
     MAX = 1024
     
