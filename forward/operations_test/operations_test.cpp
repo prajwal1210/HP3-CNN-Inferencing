@@ -33,7 +33,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
-#include "operations.h"
+#include "forward/operations.h"
 
 using namespace cv;
 using namespace std;
@@ -204,7 +204,7 @@ int main() {
   checkCUDNN(cudnnCreate(&cudnn));
 
   /* Read Image */
-  Mat image = loadImage("./data/n02118333_27_fox.jpg");
+  Mat image = loadImage("../data/n02118333_27_fox.jpg");
       float* im = image.ptr<float>(0);
   float* re_im;
 
@@ -216,14 +216,14 @@ int main() {
   im = HWCToCHW(im, h, w, channels);
 
   //Reconvert and check
-  // re_im = CHWToHWC(im, h, w, channels);
-  // save_image("reconvert.png", re_im, h, w);
+  re_im = CHWToHWC(im, h, w, channels);
+  save_image("reconvert.png", re_im, h, w);
 
   /* Conv Layer */
   float* h_output;
   h_output = Conv2D_func(cudnn, im, h, w, channels, h, w);
   re_im = CHWToHWC(h_output, h, w, channels);
-  save_image("cudnnout.png", re_im, h, w);
+  save_image("cudnnconv.png", re_im, h, w);
 
   /* Pool Layer */
   h_output = MaxPool_func(cudnn, h_output, h, w, h, w);

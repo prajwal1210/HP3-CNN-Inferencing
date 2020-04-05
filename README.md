@@ -16,3 +16,8 @@ Here :
 * Integrating Kernels with the Forward Pass and Testing **(Hard Deadline: Wednesday - 8th April)**
 * Adding Profilining, Plotting and Analysis for both VGG and AlexNet **(Hard Deadline: Saturday - 11th April)**
 * Presentation and Documentation **(Hard Deadline: Monday - 13th April )**
+
+## Compile Instructions
+
+forward.cc:
+	nvcc -I . -L /usr/local/cuda-10.1/man/man7/libcublas.so.7 -std=c++14 forward/forward.cc proto/translator.cpp proto/network.pb.cc forward/operations.cpp -lcudnn -lcublas `pkg-config --cflags --libs protobuf`

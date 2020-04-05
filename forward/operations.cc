@@ -1,5 +1,5 @@
 /************************************************************
- * operations.cpp:									                        *
+ * operations.cc:									                          *
  * Implementation of the library operations.h               *
  *                                                          *
  * Author: Prajwal Singhania								                *
