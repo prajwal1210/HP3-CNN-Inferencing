@@ -327,23 +327,25 @@ float* convolve_FFT(float * input_layer, float * kernel, int pad, int stride, in
   ////////crop output
   fH = kernel_dim[0]; fW = kernel_dim[1] ; fD = kernel_dim[2];
   int oH = H - fH + 1; int oW = W - fW + 1;
-   
-  //test_crop(result1,H, W, D, oH, oW);
+  float* result2 = (float*)malloc(BS * oW*oH* sizeof(float));
+  for(int i = 0; i < BS; i++)
+  {
+    float *crop_out = NULL; cudaMalloc((void **)&crop_out, oH * oW * sizeof(float));
+    float *crop_in = NULL; cudaMalloc((void **)&crop_in, D * H * W * sizeof(float));
+    cudaMemcpy(crop_in, &conv_result[i * D * H* W],  D * H * W * sizeof(float),cudaMemcpyHostToDevice);
+    
+    dim3 threads5(1,1,1);
+    dim3 grid5(H,W,1);
+    crop<<<grid5, threads5>>>(crop_in, crop_out, H, W, oH, oW, D);
+    err = cudaGetLastError(); if(err!=cudaSuccess){fprintf(stderr, "Failed to launch crop(error code %s)!\n", cudaGetErrorString(err)); exit(EXIT_FAILURE);}
+    
+    cudaMemcpy(&result2[i*oW*oH], crop_out, oW*oH* sizeof(float) ,cudaMemcpyDeviceToHost);
+  }
   
-  float *crop_out = NULL; cudaMalloc((void **)&crop_out, oH * oW * sizeof(float));
-  float *crop_in = NULL; cudaMalloc((void **)&crop_in, D * H * W * sizeof(float));
-  cudaMemcpy(crop_in, conv_result,  D * H * W * sizeof(float),cudaMemcpyHostToDevice);
-  
-  dim3 threads5(1,1,1);
-  dim3 grid5(H,W,1);
-  crop<<<grid5, threads5>>>(crop_in, crop_out, H, W, oH, oW, D);
-  err = cudaGetLastError(); if(err!=cudaSuccess){fprintf(stderr, "Failed to launch crop(error code %s)!\n", cudaGetErrorString(err)); exit(EXIT_FAILURE);}
-  
-  float* result2 = (float*)malloc(oW*oH* sizeof(float));
-  cudaMemcpy(result2, crop_out, oW*oH* sizeof(float) ,cudaMemcpyDeviceToHost);
   ///////crop output end
-      
-      for(int j = 0; j < oH; j++)
+  printf("crop out \n");
+  for(int i = 0; i < BS; i++) 
+  { for(int j = 0; j < oH; j++)
       {
           for(int k = 0; k < oW; k++)
           {
@@ -351,27 +353,31 @@ float* convolve_FFT(float * input_layer, float * kernel, int pad, int stride, in
           }
           printf("\n");
       } 
-      printf("\n\n\n");
+    printf("\n\n");
+  }
+   printf("crop out end \n\n\n");
 
   ///////stride output stride_(float* f_in, float* f_out, int H, int W, int stride)
   if(stride != 1)
   {
       int sH = oH / stride + 1; int sW = oW / stride + 1; 
-      float *stride_in = NULL; cudaMalloc((void **)&stride_in, oH * oW * sizeof(float));
-      float *stride_out = NULL; cudaMalloc((void **)&stride_out, sH * sW * sizeof(float));
-      cudaMemcpy(stride_in, result2, oW*oH* sizeof(float) ,cudaMemcpyHostToDevice);
-      dim3 threads6(1,1,1);
-      dim3 grid6(oH,oW,1);
-      stride_<<<grid6, threads6>>>(stride_in, stride_out ,oH, oW, stride);
-      err = cudaGetLastError(); if(err!=cudaSuccess){fprintf(stderr, "Failed to launch stride(error code %s)!\n", cudaGetErrorString(err)); exit(EXIT_FAILURE);}
-      oH = sH; oW = sW;
-      crop_out = stride_out;
+      float* result_s = (float *)malloc(BS* sH*sW*sizeof(float));
+   
+      for(int i = 0; i < BS ; i++)
+      {
+          float *stride_in = NULL; cudaMalloc((void **)&stride_in, oH * oW * sizeof(float));
+          float *stride_out = NULL; cudaMalloc((void **)&stride_out, sH * sW * sizeof(float));
+          cudaMemcpy(stride_in, &result2[i * oW* oH], oW*oH* sizeof(float) ,cudaMemcpyHostToDevice);
+          dim3 threads6(1,1,1);
+          dim3 grid6(oH,oW,1);
+          stride_<<<grid6, threads6>>>(stride_in, stride_out ,oH, oW, stride);
+          err = cudaGetLastError(); if(err!=cudaSuccess){fprintf(stderr, "Failed to launch stride(error code %s)!\n", cudaGetErrorString(err)); exit(EXIT_FAILURE);}
+          cudaMemcpy(&result_s[i*sH*sW], stride_out , sH * sW * sizeof(float) ,cudaMemcpyDeviceToHost);
+      }
+      result2 = result_s;
   }
   ///////stride output end
-
-  float* result = new float[oH * oW];
-  cudaMemcpy(result, crop_out , oH * oW * sizeof(float) ,cudaMemcpyDeviceToHost);
   
-  return result;
+  return result2;
   
 }

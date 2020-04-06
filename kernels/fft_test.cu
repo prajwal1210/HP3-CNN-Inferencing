@@ -87,7 +87,7 @@ int main(){
           for(int j = 0; j < out_W; j++)
           {
               //if(abs(actual_result[i * width + j] - expected_result[i][j]) > 0.001 ){
-                printf("%f ",round(actual_result[i*out_W+j]));
+                printf("%f ",round(actual_result[l*out_H * out_W + i*out_W+j]));
               //}
           }
           printf("\n");
