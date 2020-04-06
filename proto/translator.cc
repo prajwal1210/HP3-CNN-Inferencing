@@ -1,5 +1,5 @@
 /************************************************************
- * translator.cpp:									                        *
+ * translator.cc:									                          *
  * Implementation of translator.h                           *
  *                                                          *
  * Author: Tanay Bhartia								                    *
