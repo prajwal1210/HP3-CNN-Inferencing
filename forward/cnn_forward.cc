@@ -7,6 +7,7 @@
 
 #include "cnn_forward.h"
 
+/* Implementation of loadCNNModelFromFile */
 void CNN::loadCNNModelFromFile(const char* model_file, DeepNet::Network& net) {
   std::string model_path(model_file);
   std::fstream inFile(model_path, std::ios::in | std::ios::binary);
@@ -24,6 +25,7 @@ void CNN::loadCNNModelFromFile(const char* model_file, DeepNet::Network& net) {
   net.ParseFromString(messageStr);
 }
 
+/* Implementation of forwardPass */
 float* CNN::forwardPass(DeepNet::Network net, int& batchsize, int& input_h, int& input_w, int& input_c, float* input, bool& succes) {
   Translator T;
   
@@ -54,7 +56,9 @@ float* CNN::forwardPass(DeepNet::Network net, int& batchsize, int& input_h, int&
                   << ", " << "padding = (" << conv->padding << " ," << conv->padding << "))" << " --> ";
           conv->GetOutputDims(&batchsize, &input_c, &input_h, &input_w);
           std::cout << "(" << batchsize << ", " << input_c << ", " << input_h << ", " << input_w << ")" << std::endl;
+          prev_output = output;
           output = conv->ConvForward(output);
+          free(prev_output);
           break;
         }
       case DeepNet::Layer::POOL:
@@ -71,7 +75,9 @@ float* CNN::forwardPass(DeepNet::Network net, int& batchsize, int& input_h, int&
                   << ", " << "padding = (" << pool->padding << " ," << pool->padding << "))" << " --> ";
           pool->GetOutputDims(&batchsize, &input_c, &input_h, &input_w);
           std::cout << "(" << batchsize << ", " << input_c << ", " << input_h << ", " << input_w << ")" << std::endl;
+          prev_output = output;
           output = pool->PoolForward(output);
+          free(prev_output);
           break; 
         }
       case DeepNet::Layer::ADAPTIVE_POOL:
@@ -88,7 +94,9 @@ float* CNN::forwardPass(DeepNet::Network net, int& batchsize, int& input_h, int&
                   << ", " << "padding = (" << pool->padding << " ," << pool->padding << "))" << " --> ";
           pool->GetOutputDims(&batchsize, &input_c, &input_h, &input_w);
           std::cout << "(" << batchsize << ", " << input_c << ", " << input_h << ", " << input_w << ")" << std::endl;
+          prev_output = output;
           output = pool->PoolForward(output);
+          free(prev_output);
           break; 
         }
       case DeepNet::Layer::ACTIVATION:
@@ -103,7 +111,9 @@ float* CNN::forwardPass(DeepNet::Network net, int& batchsize, int& input_h, int&
           std::cout << "("  << t << ")" << " --> ";
           act->GetOutputDims(&batchsize, &input_c, &input_h, &input_w);
           std::cout << "(" << batchsize << ", " << input_c << ", " << input_h << ", " << input_w << ")" << std::endl;
+          prev_output = output;
           output = act->ActivationForward(output);
+          free(prev_output);
           break;
         }
       case DeepNet::Layer::LINEAR:
@@ -117,7 +127,9 @@ float* CNN::forwardPass(DeepNet::Network net, int& batchsize, int& input_h, int&
           std::cout << "("  << "out_nodes = " << lin->out_nodes << ", " << "in_nodes = " << lin->in_nodes << ")" << " --> ";
           lin->GetOutputDims(&batchsize, &input_c, &input_h, &input_w);
           std::cout << "(" << batchsize << ", " << input_c << ", " << input_h << ", " << input_w << ")" << std::endl;
+          prev_output = output;
           output = lin->LinearForward(output);
+          free(prev_output);
           break;
         }
       default:
