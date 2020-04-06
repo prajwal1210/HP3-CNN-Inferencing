@@ -1,8 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <cuda.h>
-#include <cuda_runtime.h>
-#include <cufft.h>
+#include "fftheader.h"
 
 //multiplication of 2 cufftComplex elements
 //// One complex product for each thread scaled by total elements

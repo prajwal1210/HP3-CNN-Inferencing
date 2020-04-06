@@ -1,6 +1,3 @@
-#include <stdlib.h>
-#include <cuda.h>
-#include <cuda_runtime.h>
 #include <"fft.cu">
 
 int main()
