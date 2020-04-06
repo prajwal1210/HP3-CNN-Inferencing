@@ -43,8 +43,8 @@ int main(){
       {
           for(int k = 0; k < width; k++)
           {
-              input_layer[i + j * channel+ k * channel * height] = input_layer_tmp[i][j][k];  
-             // printf("%f ", input_layer_tmp[i][j][k]);
+              input_layer[i * height * width + j * width + k] = input_layer_tmp[i][j][k];  
+             //printf("%f ",  input_layer[i * height * width + j * width + k]);
           }
          //printf("\n");
       }    
@@ -57,9 +57,11 @@ int main(){
       {
           for(int k = 0; k < kernel_width; k++)
           {
-              kernel[i + j * channel + k * channel * kernel_height] = kernel_tmp[i][j][k];  
-          }
+              kernel[i * kernel_height * kernel_width + j * kernel_width + k] = kernel_tmp[i][j][k]; 
+              //printf("%f ",  kernel[i * kernel_height * kernel_width + j * kernel_width + k]); 
+          }//printf("\n");
       }    
+      //printf("\n");
     }
       
     int pad = 0;
@@ -76,8 +78,8 @@ int main(){
       {
           for(int j = 0; j < out_W; j++)
           {
-              //if(abs(actual_result[i + j*height] - expected_result[i][j]) > 0.001 ){
-                printf("%f ",round(actual_result[i+j*out_H]));
+              //if(abs(actual_result[i * width + j] - expected_result[i][j]) > 0.001 ){
+                printf("%f ",round(actual_result[i*out_W+j]));
               //}
           }
           printf("\n");
