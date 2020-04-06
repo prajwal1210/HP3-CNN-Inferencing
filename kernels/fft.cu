@@ -132,14 +132,14 @@ __global__ void stride_(float* f_in, float* f_out, int H, int W, int stride)
     }
 }
 
-float* conv_operation(float* filter_align, float* input_layer_pad, int H, int W, int D)
+float* conv_operation(float* filter_align, float* input_layer_pad, int H, int W, int D, int BS)
 {
-    int N[3] = {H, W, D};
+    int N[3] = {D,H, W};
     cufftReal* d_inA, *d_inB;
     cufftComplex* d_outA, *d_outB;
     cufftHandle fwplanA, fwplanB, bwplan;
-    size_t real_size = D* W * H * sizeof(cufftReal);
-    size_t complex_size = D * W * (H/2 + 1) * sizeof(cufftComplex);
+    size_t real_size = BS * D* W * H * sizeof(cufftReal);
+    size_t complex_size = BS * D * W * (H/2 + 1) * sizeof(cufftComplex);
 
     cudaMalloc((void**)&d_inA, real_size);
     cudaMalloc((void**)&d_inB, real_size);
@@ -147,42 +147,38 @@ float* conv_operation(float* filter_align, float* input_layer_pad, int H, int W,
     cudaMalloc((void**)&d_outB, complex_size);
     cudaMemset(d_inA,0,real_size);
     cudaMemset(d_inB,0,real_size);
+ 
+    float * filter_align_in = (float *)malloc(real_size);
+    for(int  i = 0; i < BS; i++)
+    {
+        cudaMemcpy(&filter_align_in[i * D * H * W], filter_align, real_size/BS,  cudaMemcpyHostToHost);
+    }
 
-    cudaMemcpy(d_inA, filter_align, real_size,  cudaMemcpyHostToDevice);
+    cudaMemcpy(d_inA, filter_align_in, real_size,  cudaMemcpyHostToDevice);
     cudaMemcpy(d_inB, input_layer_pad, real_size, cudaMemcpyHostToDevice); //update inpute_layer
   
-    cufftPlan3d(&fwplanA, D, H, W, CUFFT_R2C);
-    cufftPlan3d(&fwplanB, D, H, W, CUFFT_R2C);
-    cufftPlan3d(&bwplan, D, H, W, CUFFT_C2R);
+    //cufftPlan3d(&fwplanA, D, H, W, CUFFT_R2C);
+    //cufftPlan3d(&fwplanB, D, H, W, CUFFT_R2C);
+    //cufftPlan3d(&bwplan, D, H, W, CUFFT_C2R);
 
     
-    //cufftPlanMany(&fwplanA, 2, N, NULL, 0,0,NULL,0,0, CUFFT_R2C ,D);
-    //cufftPlanMany(&fwplanB, 2, N, NULL, 0,0,NULL,0,0, CUFFT_R2C ,D);
-    //cufftPlanMany(&bwplan, 2, N, NULL, 0,0,NULL,0,0, CUFFT_C2R ,D);
+    cufftPlanMany(&fwplanA, 3, N, NULL, 0,0,NULL,0,0, CUFFT_R2C ,BS);
+    cufftPlanMany(&fwplanB, 3, N, NULL, 0,0,NULL,0,0, CUFFT_R2C ,BS);
+    cufftPlanMany(&bwplan, 3, N, NULL, 0,0,NULL,0,0, CUFFT_C2R ,BS);
     
     cufftExecR2C(fwplanA, d_inA, d_outA);
     cufftExecR2C(fwplanB, d_inB, d_outB);
 
-    int blocksx = ceil((D*W*(H/2 + 1)) / 256.0f);
+    int blocksx = ceil((BS * D*W*(H/2 + 1)) / 256.0f);
     dim3 threads4(256);
     dim3 grid4(blocksx);
-    pointwise_product<<<grid4, threads4>>>(d_outA, d_outB, (D*W*(H/2 + 1)), 1.0f/(H*W*D));
+    pointwise_product<<<grid4, threads4>>>(d_outA, d_outB, (BS * D*W*(H/2 + 1)), 1.0f/(H*W*D));
 
     cufftExecC2R(bwplan, d_outA, d_inA);
     
-    float* result1 = new float[D*W*2*((H/2 + 1)) ];
+    float* result1 = new float[BS * D*W*2*((H/2 + 1)) ];
     cudaMemcpy(result1, d_inA, real_size,cudaMemcpyDeviceToHost);
     return result1;
-}
-
-float* add_filters(float* input1, float* input2, int size)
-{
-    float* output = (float*)malloc(size*sizeof(float));
-    for(int i = 0; i < size; i++)
-    {
-        output[i] = input1[i] + input2[i];
-    }
-    return output;
 }
 
 // input arguments are input_layer, kernel, padding, stride, batch_size, input_layer dimensions, kernel dimensions
@@ -191,26 +187,30 @@ float* add_filters(float* input1, float* input2, int size)
 float* convolve_FFT(float * input_layer, float * kernel, int pad, int stride, int batch_size, int* il_dim, int* kernel_dim)
 {
   //////initializations
-  int H = il_dim[0], W = il_dim[1], D = il_dim[2];
+  int H = il_dim[0], W = il_dim[1], D = il_dim[2]; int BS = batch_size;
   int fH = kernel_dim[0], fW = kernel_dim[1] , fD = kernel_dim[2];
   cudaError_t err = cudaSuccess;
   //////////////////////////
 
   ///////pad input
   int new_H = H+2*pad; int new_W = W+2*pad;
-  float *pad_input_in = NULL; cudaMalloc((void **)&pad_input_in, H * W * D * sizeof(float));
-  float *pad_input_out = NULL; cudaMalloc((void **)&pad_input_out, new_H * new_W * D * sizeof(float));
-  float *input_layer_pad = (float *)malloc(new_H* new_W * D *sizeof(float));
-
-  cudaMemcpy(pad_input_in, input_layer, H * W * D * sizeof(float) , cudaMemcpyHostToDevice);
-  dim3 threads1(1,1,1);
-  dim3 grid1(new_H,new_W,D);
-  pad_input<<<grid1,threads1>>>(pad_input_in, pad_input_out, H,W,D,pad);
-  err = cudaGetLastError(); if(err!=cudaSuccess){fprintf(stderr, "Failed to launch pad input (error code %s)!\n", cudaGetErrorString(err)); exit(EXIT_FAILURE);}
-  cudaMemcpy(input_layer_pad, pad_input_out , new_H * new_W * D * sizeof(float), cudaMemcpyDeviceToHost);
+  float *input_layer_pad = (float *)malloc(BS * D * new_H* new_W *sizeof(float));
+  for(int i = 0; i < BS; i++)
+  {
+      float *pad_input_in = NULL; cudaMalloc((void **)&pad_input_in, H * W * D * sizeof(float));
+      float *pad_input_out = NULL; cudaMalloc((void **)&pad_input_out, new_H * new_W * D * sizeof(float));
+      cudaMemcpy(pad_input_in, &input_layer[i * D * H * W], H * W * D * sizeof(float) , cudaMemcpyHostToDevice);
+      
+      dim3 threads1(1,1,1);
+      dim3 grid1(new_H,new_W,D);
+      pad_input<<<grid1,threads1>>>(pad_input_in, pad_input_out, H,W,D,pad);
+      err = cudaGetLastError(); if(err!=cudaSuccess){fprintf(stderr, "Failed to launch pad input (error code %s)!\n", cudaGetErrorString(err)); exit(EXIT_FAILURE);}
+      
+      cudaMemcpy(&input_layer_pad[i * D * new_H * new_W], pad_input_out , new_H * new_W * D * sizeof(float), cudaMemcpyDeviceToHost);
+      cudaFree(pad_input_in); cudaFree(pad_input_out);
+  }
   H = new_H; W = new_W;
   //////pad input end
- 
 
   //////flip filter
   float *filter_flip = (float *)malloc(fH * fW * fD *sizeof(float));
@@ -302,19 +302,23 @@ float* convolve_FFT(float * input_layer, float * kernel, int pad, int stride, in
 
 
   ///////Convolve begin (FFT, Pointwise prodcut, IFFT)
-  float* conv_result = conv_operation(input_layer_pad, filter_align, H, W, D);
+  float* conv_result = conv_operation(input_layer_pad, filter_align, H, W, D, BS);
   printf("result of conv final\n");
-  for(int i = 0; i < D; i++)      
+  for(int l = 0; l < BS ; l++)
   {
-        for(int j = 0; j < H; j++)
-        {
-            for(int k = 0; k < W; k++)
-            {
-                printf("%f ",conv_result[i * H*W + j*W + k]  );
-            }
-            printf("\n");
-        }  
-      printf("\n");
+    for(int i = 0; i < D; i++)      
+    {
+          for(int j = 0; j < H; j++)
+          {
+              for(int k = 0; k < W; k++)
+              {
+                  printf("%f ",conv_result[i * H*W + j*W + k]  );
+              }
+              printf("\n");
+          }  
+        printf("\n");
+    }
+    printf("\n\n");
   }
    printf("result of conv final end \n\n");
   
