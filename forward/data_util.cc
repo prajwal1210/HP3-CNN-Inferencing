@@ -1,7 +1,14 @@
+/************************************************************
+ * data_util.cc:								                            *
+ * Implementation of data_util.h library                    *
+ *                                                          *
+ * Author: Prajwal Singhania								                *
+ ************************************************************/
+
 #include "data_util.h"
 
-/* Implementation of (SingleImageLoader)loadImage */
-cv::Mat SingleImageLoader::loadImage(const char* image_path, bool resize) {
+/* Implementation of (ImageLoader)loadImage */
+cv::Mat ImageLoader::loadImage(const char* image_path, bool resize) {
 	cv::Mat image = cv::imread(image_path, CV_LOAD_IMAGE_COLOR);
 	image.convertTo(image, CV_32FC3);
   if (resize) {
@@ -17,8 +24,8 @@ cv::Mat SingleImageLoader::loadImage(const char* image_path, bool resize) {
   }
 }
 
-/* Implementation of (SingleImageLoader)HWCToCHW */
-float* SingleImageLoader::HWCToCHW(float* image, int rows, int cols, int channels) {
+/* Implementation of (ImageLoader)HWCToCHW */
+float* ImageLoader::HWCToCHW(float* image, int rows, int cols, int channels) {
 
 	float* data = new float[channels*rows*cols];
 	for(size_t i=0; i<rows; i++) {
@@ -31,8 +38,8 @@ float* SingleImageLoader::HWCToCHW(float* image, int rows, int cols, int channel
 	return data;
 }
 
-/* Implementation of (SingleImageLoader)CHWToHWC */
-float* SingleImageLoader::CHWToHWC(float* image, int rows, int cols, int channels) {
+/* Implementation of (ImageLoader)CHWToHWC */
+float* ImageLoader::CHWToHWC(float* image, int rows, int cols, int channels) {
 
 	float* data = new float[channels*rows*cols];
 	for(size_t i=0; i<rows; i++) {
@@ -45,6 +52,7 @@ float* SingleImageLoader::CHWToHWC(float* image, int rows, int cols, int channel
 	return data;
 }
 
+
 /* Implementation of (SingleImageLoader)loadSingleColoredImageCHW */
 float* SingleImageLoader::loadSingleColoredImageCHW(const char* image_path, int& batchsize, int& channels, int& height, int& width, bool resize) {
   cv::Mat image = loadImage(image_path, resize);
@@ -54,6 +62,7 @@ float* SingleImageLoader::loadSingleColoredImageCHW(const char* image_path, int&
   batchsize = 1;
   channels = 3;
   float* retImage = this->HWCToCHW(im, height, width, channels);
+  image.release();
   return retImage;
 }
 
@@ -75,3 +84,59 @@ void SingleImageLoader::saveImageCHW(const char* output_filename, float* buffer,
   cv::imwrite(output_filename, output_image);
 }
 
+
+/* Implementation of MiniImageNetLoader constructor */
+MiniImageNetLoader::MiniImageNetLoader(const char* datapath, int batchsize) {
+  this->dataPath = datapath;
+  this->BATCH_SIZE = batchsize;
+  std::string imageListPath = this->dataPath + "ImageLists.txt";
+  std::cout << imageListPath << std::endl;
+  this->imageListFile.open(imageListPath.c_str(), std::ifstream::in);
+  if(!this->imageListFile.is_open()) {
+    std::cerr << "Error opening the dataset description file" << std::endl;
+    exit(1);
+  }
+}
+
+/* Implementation of MiniImageNetLoader destructor */
+MiniImageNetLoader::~MiniImageNetLoader() {
+  this->closeFile();
+}
+
+/* Implementation of (MiniImageNetLoader)loadNextBatch */
+float* MiniImageNetLoader::loadNextBatch(int& batchsize, int& channels, int& height, int& width, bool& completed) {
+  std::string fileName;
+  int batch_cnt = 0;
+  float* data = new float[this->BATCH_SIZE * 3 * 256 * 256];
+  int data_ptr = 0;
+  while(std::getline(this->imageListFile, fileName)) {
+    batch_cnt++;
+    std::string imagePath = this->dataPath + fileName;
+    cv::Mat image = this->loadImage(imagePath.c_str(), true);
+    float* im = image.ptr<float>(0);
+    float* im_chw = this->HWCToCHW(im, image.rows, image.cols, 3);
+    for(int k = 0; k < 3 * image.rows * image.cols; k++) {
+      data[data_ptr++] = im_chw[k];
+    }
+    image.release();
+    free(im_chw);
+    if(batch_cnt == this->BATCH_SIZE)
+      break;
+  }
+  height = 256;
+  width = 256;
+  batchsize = batch_cnt;
+  channels = 3;
+  if(batch_cnt < this->BATCH_SIZE) {
+    completed = true;
+    this->closeFile();
+  }
+  return data;
+}
+
+/* Implementation of (MiniImageNetLoader)closeFile */
+void MiniImageNetLoader::closeFile() {
+  if(this->imageListFile.is_open()) {
+    this->imageListFile.close();
+  }
+}
