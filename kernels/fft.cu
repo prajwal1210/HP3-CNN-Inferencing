@@ -306,3 +306,29 @@ float* convolve_FFT(float * input_layer, float * kernel, int pad, int stride, in
   return result2;
   
 }
+
+float* forward(int out_size, int channel, int kernel_height, int kernel_width, int pad, int stride, float* kernel, int batch_size, int height, int width, float* input_layer)
+{
+    int il_dim[3] = {height, width, channel}; int kernel_dim[3] = {kernel_height, kernel_width, channel};
+ 
+    int out_H = ((height - kernel_height + 2 * pad)/stride) + 1; 
+    int out_W = ((width - kernel_width + 2 * pad)/stride) + 1;     
+    float* final_output = (float *)malloc(batch_size * out_size * out_H * out_W * sizeof(float));
+   
+    for(int l = 0; l < out_size ; l++)
+    {
+        float* actual_result = convolve_FFT(input_layer, &kernel[l * channel * kernel_height* kernel_width], pad, stride, batch_size, il_dim, kernel_dim);
+          for(int ll = 0; ll < batch_size; ll++)  
+          {
+            for(int ii = 0; ii < out_H; ii++)
+            {
+                for(int jj = 0; jj < out_W; jj++)
+                {
+                      final_output[ll*out_size*out_H*out_W + l*out_H*out_W + ii * out_W + jj] = round(actual_result[ll*out_H * out_W + ii*out_W+jj]);
+                }
+            }
+          }
+    }
+
+    return final_output;
+}
