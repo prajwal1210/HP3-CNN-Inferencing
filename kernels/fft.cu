@@ -153,7 +153,7 @@ float* conv_operation(float* filter_align, float* input_layer_pad, int H, int W,
     {
         cudaMemcpy(&filter_align_in[i * D * H * W], filter_align, real_size/BS,  cudaMemcpyHostToHost);
     }
-
+ 
     cudaMemcpy(d_inA, filter_align_in, real_size,  cudaMemcpyHostToDevice);
     cudaMemcpy(d_inB, input_layer_pad, real_size, cudaMemcpyHostToDevice); //update inpute_layer
   
@@ -302,7 +302,7 @@ float* convolve_FFT(float * input_layer, float * kernel, int pad, int stride, in
 
 
   ///////Convolve begin (FFT, Pointwise prodcut, IFFT)
-  float* conv_result = conv_operation(input_layer_pad, filter_align, H, W, D, BS);
+  float* conv_result = conv_operation( filter_align, input_layer_pad, H, W, D, BS);
   printf("result of conv final\n");
   for(int l = 0; l < BS ; l++)
   {
