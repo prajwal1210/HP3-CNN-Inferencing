@@ -226,21 +226,6 @@ float* convolve_FFT(float * input_layer, float * kernel, int pad, int stride, in
   cudaMemcpy(filter_flip, f_B, fH*fW*fD*sizeof(float), cudaMemcpyDeviceToHost);
 
  ///////flip filter end
- printf("flip filter\n");
- for(int i = 0; i < fD; i++)
-    {
-      for(int j = 0; j < fH; j++)
-      {
-          for(int k = 0; k < fW; k++)
-          {
-              printf("%f ",filter_flip[ i * fW * fH + j * fW + k]  );
-          }
-          printf("\n");
-      }    
-      printf("\n");
-   } 
-  printf("\n\n");
-
 
   ///////pad filter 
   int fpad = (new_H - fH)/2; 
@@ -258,20 +243,7 @@ float* convolve_FFT(float * input_layer, float * kernel, int pad, int stride, in
   cudaMemcpy(filter_pad, pad_filter_out , new_fH * new_fW * D * sizeof(float), cudaMemcpyDeviceToHost);
   fH = new_fH; fW = new_fW;
   //////pad filter end
- printf("pad filter\n");
- for(int i = 0; i < fD; i++)
-    {
-      for(int j = 0; j < fH; j++)
-      {
-          for(int k = 0; k < fW; k++)
-          {
-              printf("%f ",filter_pad[ i * fW * fH + j * fW + k]  );
-          }
-          printf("\n");
-      }    
-      printf("\n");
-   } 
-  printf("\n\n");
+ 
   ///////align filter begin
   float *filter_align = (float *)malloc(fH * fW * fD *sizeof(float));
   float *d_A = NULL; cudaMalloc((void **)&d_A, fH * fW * fD * sizeof(float));
@@ -286,42 +258,8 @@ float* convolve_FFT(float * input_layer, float * kernel, int pad, int stride, in
   cudaMemcpy(filter_align, d_B, fH*fW*fD*sizeof(float), cudaMemcpyDeviceToHost);
   ///////align filter end
  
-  for(int i = 0; i < fD; i++)
-    {
-      for(int j = 0; j < fH; j++)
-      {
-          for(int k = 0; k < fW; k++)
-          {
-              printf("%f ",filter_align[k + j * fW+ i * fW * fH]  );
-          }
-          printf("\n");
-      }    
-      printf("\n");
-   } 
-  printf("\n\n");
-
-
   ///////Convolve begin (FFT, Pointwise prodcut, IFFT)
   float* conv_result = conv_operation( filter_align, input_layer_pad, H, W, D, BS);
-  printf("result of conv final\n");
-  for(int l = 0; l < BS ; l++)
-  {
-    for(int i = 0; i < D; i++)      
-    {
-          for(int j = 0; j < H; j++)
-          {
-              for(int k = 0; k < W; k++)
-              {
-                  printf("%f ",conv_result[i * H*W + j*W + k]  );
-              }
-              printf("\n");
-          }  
-        printf("\n");
-    }
-    printf("\n\n");
-  }
-   printf("result of conv final end \n\n");
-  
   //////convolve end
 
   ////////crop output
@@ -343,19 +281,6 @@ float* convolve_FFT(float * input_layer, float * kernel, int pad, int stride, in
   }
   
   ///////crop output end
-  printf("crop out \n");
-  for(int i = 0; i < BS; i++) 
-  { for(int j = 0; j < oH; j++)
-      {
-          for(int k = 0; k < oW; k++)
-          {
-              printf("%f ",result2[ j* oW+ k]  );
-          }
-          printf("\n");
-      } 
-    printf("\n\n");
-  }
-   printf("crop out end \n\n\n");
 
   ///////stride output stride_(float* f_in, float* f_out, int H, int W, int stride)
   if(stride != 1)
