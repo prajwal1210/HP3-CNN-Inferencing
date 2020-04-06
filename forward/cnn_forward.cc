@@ -1,27 +1,14 @@
 /************************************************************
- * forward.cc:									                            *
- * Loads a pretrained network and runs a forward pass on it *
+ * cnn_forward.cc:									                        *
+ * Implementation of cnn_forward.h                          *
  *                                                          *
  * Author: Prajwal Singhania								                *
  ************************************************************/
 
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <sstream>
+#include "cnn_forward.h"
 
-#include "proto/network.pb.h"
-#include "proto/translator.h"
-#include "forward/operations.h"
-
-int main(int argc, char **argv) {
-  
-  if(argc != 2) {
-    std::cerr << "Please provide path to the model to load relative to the executable directory" << std::endl;
-    exit(1);  
-  }
-
-  std::string model_path(argv[1]);
+void CNN::loadCNNModelFromFile(const char* model_file, DeepNet::Network& net) {
+  std::string model_path(model_file);
   std::fstream inFile(model_path, std::ios::in | std::ios::binary);
   std::string messageStr;
 
@@ -34,22 +21,19 @@ int main(int argc, char **argv) {
     std::cerr << model_path << " not found" << std::endl;
     exit(1);
   }
-
-  DeepNet::Network net;
   net.ParseFromString(messageStr);
+}
+
+float* CNN::forwardPass(DeepNet::Network net, int& batchsize, int& input_h, int& input_w, int& input_c, float* input, bool& succes) {
+  Translator T;
   
   cudnnHandle_t cudnn;
   checkCUDNN(cudnnCreate(&cudnn));
   cublasHandle_t cublas;
 	checkCudaErrors(cublasCreate(&cublas));
 
-  Translator T;
-
-  int batchsize = 1;
-  int input_h = 256;
-  int input_w = 256;
-  int input_c = 3;
-
+  float* output = input;
+  float* prev_output;
   /* Parse the network layer by layer and compute the forward pass */
   for(int i = 0; i < net.layers_size(); i++) {
     DeepNet::Layer net_layer = net.layers(i); 
@@ -59,46 +43,87 @@ int main(int argc, char **argv) {
       case DeepNet::Layer::CONV:
         {
           Conv2D* conv = T.translateConv2D_layer(net_layer, cudnn, input_h, input_w, batchsize);
+          if(conv == NULL)
+          {
+            succes = false;
+            return NULL;
+          }
           std::cout << "(" << conv->out_channels << ", " << conv->in_channels 
                   << ", " << "kernel_size = (" << conv->h  << ", " << conv->w << ")"
                   << ", " << "stride = (" << conv->stride << " ," << conv->stride << ")" 
                   << ", " << "padding = (" << conv->padding << " ," << conv->padding << "))" << " --> ";
           conv->GetOutputDims(&batchsize, &input_c, &input_h, &input_w);
           std::cout << "(" << batchsize << ", " << input_c << ", " << input_h << ", " << input_w << ")" << std::endl;
+          output = conv->ConvForward(output);
           break;
         }
       case DeepNet::Layer::POOL:
         {
           Pool* pool = T.translatePool_layer(net_layer, cudnn, batchsize, input_c, input_h, input_w);
-          std::cout << "("  << "kernel_size = (" << pool->kernel_size_y  << ", " << pool->kernel_size_x << ")"
+          if(pool == NULL)
+          {
+            succes = false;
+            return NULL;
+          }
+          string t = pool->type == 0 ? "MAX" : "AVG";
+          std::cout << "("  << t << ", " << "kernel_size = (" << pool->kernel_size_y  << ", " << pool->kernel_size_x << ")"
                   << ", " << "stride = (" << pool->stride_y << " ," << pool->stride_x << ")" 
                   << ", " << "padding = (" << pool->padding << " ," << pool->padding << "))" << " --> ";
           pool->GetOutputDims(&batchsize, &input_c, &input_h, &input_w);
           std::cout << "(" << batchsize << ", " << input_c << ", " << input_h << ", " << input_w << ")" << std::endl;
+          output = pool->PoolForward(output);
+          break; 
+        }
+      case DeepNet::Layer::ADAPTIVE_POOL:
+        {
+          Pool* pool = T.translateAdaptivePool_layer(net_layer, cudnn, batchsize, input_c, input_h, input_w);
+          if(pool == NULL)
+          {
+            succes = false;
+            return NULL;
+          }
+          string t = pool->type == 0 ? "MAX" : "AVG";
+          std::cout << "("  << t << ", " << "kernel_size = (" << pool->kernel_size_y  << ", " << pool->kernel_size_x << ")"
+                  << ", " << "stride = (" << pool->stride_y << " ," << pool->stride_x << ")" 
+                  << ", " << "padding = (" << pool->padding << " ," << pool->padding << "))" << " --> ";
+          pool->GetOutputDims(&batchsize, &input_c, &input_h, &input_w);
+          std::cout << "(" << batchsize << ", " << input_c << ", " << input_h << ", " << input_w << ")" << std::endl;
+          output = pool->PoolForward(output);
           break; 
         }
       case DeepNet::Layer::ACTIVATION:
         {
           Activation* act = T.translateActivation_layer(net_layer, cudnn, batchsize, input_c, input_h, input_w);
+          if(act == NULL)
+          {
+            succes = false;
+            return NULL;
+          }
           string t = act->type == 0 ? "RELU" : "SIGMOID";
           std::cout << "("  << t << ")" << " --> ";
           act->GetOutputDims(&batchsize, &input_c, &input_h, &input_w);
           std::cout << "(" << batchsize << ", " << input_c << ", " << input_h << ", " << input_w << ")" << std::endl;
+          output = act->ActivationForward(output);
           break;
         }
       case DeepNet::Layer::LINEAR:
         {
           Linear* lin = T.translateLinear_layer(net_layer, cudnn, cublas, batchsize);
+          if(lin == NULL)
+          {
+            succes = false;
+            return NULL;
+          }
           std::cout << "("  << "out_nodes = " << lin->out_nodes << ", " << "in_nodes = " << lin->in_nodes << ")" << " --> ";
           lin->GetOutputDims(&batchsize, &input_c, &input_h, &input_w);
           std::cout << "(" << batchsize << ", " << input_c << ", " << input_h << ", " << input_w << ")" << std::endl;
+          output = lin->LinearForward(output);
           break;
         }
       default:
         std::cout << std::endl;
     }
   }
-  google::protobuf::ShutdownProtobufLibrary();
-  
-  return 0;
+  succes = true;
+  return output;
 }

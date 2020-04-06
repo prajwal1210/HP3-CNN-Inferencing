@@ -24,7 +24,7 @@ def createKernel():
 
     h_kernel = []
     for k in range(3):
-        temp_k = []
+        temp_k = [] 
         for c in range(3):
             temp_k.append(kernel_template)
         h_kernel.append(temp_k)
@@ -78,7 +78,7 @@ def compareOutputs(diff, layer, total_img_size):
 
 
 #Load the image
-res = loadImage('data/n02118333_27_fox.jpg')
+res = loadImage('../data/n02118333_27_fox.jpg')
 
 
 #Process the image for feeding it to the model appropriately
