@@ -225,8 +225,21 @@ def createAlexNetSpecification(filename):
     alex = models.alexnet(pretrained=True)
     createProtoSpecification(alex, filename)
 
-#Create the kernel
-def createKernel():
+def createTestModeSpecification(filename):
+    """"
+    Creates and saves a Toy Model for Testing in the specified protobuf format 
+        Input : Name of the file in which to store the model message
+        Result : Saves the model with the given filename under the directory - PRE_TRAINED_DIR
+    """
+    test_model = nn.Sequential(
+    nn.Conv2d(3, 3, kernel_size=(3,3), padding=1, bias=False),
+    nn.AvgPool2d(4),
+    nn.Sigmoid(),
+    nn.Flatten(),
+    nn.Linear(37674,100)
+    )
+
+    #Create the custom Kernel
     kernel_template = [[1,  1 , 1],[1, -8 , 1],[1,  1, 1]]
 
     h_kernel = []
@@ -237,12 +250,11 @@ def createKernel():
         h_kernel.append(temp_k)
 
     h_kernel = np.asarray(h_kernel)
-    return h_kernel
-
-#Create Weight and Bias for the Linear Layer Testing
-def createWeightAndBias(out_nodes, in_nodes):
-    MAX = 1024
     
+    #Create weights
+    out_nodes = 100
+    in_nodes = 37674
+    MAX = 1024
     k = 0
     w = []
     for i in range(out_nodes):
@@ -254,23 +266,6 @@ def createWeightAndBias(out_nodes, in_nodes):
     w = np.asarray(w)
     b = [x%MAX for x in range(out_nodes)]
     b = np.asarray(b)
-    return w,b
-
-def createTestModeSpecification(filename):
-    test_model = nn.Sequential(
-    nn.Conv2d(3, 3, kernel_size=(3,3), padding=1, bias=False),
-    nn.AvgPool2d(4),
-    nn.Sigmoid(),
-    nn.Flatten(),
-    nn.Linear(37674,100)
-    )
-
-    #Create the custom Kernel
-    h_kernel = createKernel()
-    print (h_kernel)
-    
-    #Create weight and bias
-    w, b = createWeightAndBias(100,37674)
 
     #Set weights to layers
     with torch.no_grad():
@@ -282,6 +277,6 @@ def createTestModeSpecification(filename):
 
 
 if __name__ == "__main__":
-    #createVGGSpecification("vgg19.pb")
-    #createAlexNetSpecification("alexnet.pb")
-    createTestModeSpecification("test.pb")
+    createVGGSpecification("vgg19.pb")
+    createAlexNetSpecification("alexnet.pb")
+    # createTestModeSpecification("test.pb")
