@@ -8,7 +8,7 @@ import sys
 #Load the Image
 def loadImage(imagePath):
     img = cv2.imread(imagePath,cv2.IMREAD_COLOR).astype(np.float32)
-    res = cv2.resize(img, (255,255))
+    res = cv2.resize(img, (256,256))
     res = cv2.normalize(res, res, 0.0, 1.0, cv2.NORM_MINMAX)
     return res
 

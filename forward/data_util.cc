@@ -5,7 +5,7 @@ cv::Mat SingleImageLoader::loadImage(const char* image_path, bool resize) {
 	cv::Mat image = cv::imread(image_path, CV_LOAD_IMAGE_COLOR);
 	image.convertTo(image, CV_32FC3);
   if (resize) {
-    cv::Size size(255,255);
+    cv::Size size(256,256);
     cv::Mat resized_image;
     cv::resize(image,resized_image,size);//resize image
     cv::normalize(resized_image, resized_image, 0, 1, cv::NORM_MINMAX);
