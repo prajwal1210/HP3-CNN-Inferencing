@@ -2,7 +2,7 @@
 
 int main()
 {
-   int channel = 3;
+  int channel = 3;
   int height = 5;
   int width = 5;
   int kernel_height = 3;
@@ -47,38 +47,16 @@ int main()
     
     float* input_layer = (float *)malloc(batch_size* channel * height* width * sizeof(float));
     float* kernel = (float *)malloc(out_size* channel * kernel_height* kernel_width * sizeof(float));
-   int out_H = ((height - kernel_height + 2 * pad)/stride) + 1; 
-  int out_W = ((width - kernel_width + 2 * pad)/stride) + 1;
+    int out_H = ((height - kernel_height + 2 * pad)/stride) + 1; 
+    int out_W = ((width - kernel_width + 2 * pad)/stride) + 1;
+    
+   float* input_layer_cuda = NULL; cudaMalloc((void **)&input_layer_cuda, batch_size* channel * height* width * sizeof(float));
+   float* kernel_cuda = NULL; cudaMalloc((void **)&kernel_cuda, out_size* channel * kernel_height* kernel_width * sizeof(float));
+   cudaMemcpy(input_layer_cuda, input_layer_tmp , batch_size * channel * height* width * sizeof(float) ,cudaMemcpyHostToDevice);
+   cudaMemcpy(kernel_cuda, kernel_tmp , out_size *channel * kernel_height* kernel_width * sizeof(float) ,cudaMemcpyHostToDevice);
+   
  
-   for(int l = 0; l < batch_size; l++)
-    {
-      for(int i = 0; i < channel; i++)
-      {
-        for(int j = 0; j < height; j++)
-        {
-            for(int k = 0; k < width; k++)
-            {
-                input_layer[l * channel * height * width + i * height * width + j * width + k] = input_layer_tmp[l][i][j][k];  
-            }
-        }    
-      }
-    }
- 
-    for(int l = 0; l < out_size ; l++)
-   {
-        for(int i = 0; i < channel; i++)
-        {
-          for(int j = 0; j < kernel_height; j++)
-          {
-              for(int k = 0; k < kernel_width; k++)
-              {
-                  kernel[l * channel * kernel_height * kernel_width + i * kernel_height * kernel_width + j * kernel_width + k] = kernel_tmp[l][i][j][k];     
-              }
-          }    
-        }
-   }
- 
-   float* final_output =  forward(out_size, channel, kernel_height, kernel_width, pad, stride, kernel, batch_size, height, width, input_layer);
+   float* final_output =  forward(out_size, channel, kernel_height, kernel_width, pad, stride, kernel_cuda, batch_size, height, width, input_layer_cuda);
    for(int l = 0; l < batch_size; l++)
     {
       for(int i = 0; i < out_size; i++)
