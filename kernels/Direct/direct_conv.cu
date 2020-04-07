@@ -1,7 +1,7 @@
 //%%cuda --name /content/src/direct_convolution.cu
 
 /*including the required library*/
-#include "direct_conv.hpp"
+#include "direct_conv.h"
 using namespace std;
 /*parallelization code */
 
@@ -33,14 +33,14 @@ void direct_convolution(int input_channels, int input_height, int input_width, i
 }
 
 /*forward pass function declared in direc_conv.hpp library*/
-float *passforward(int out_channels, int input_channels, int kernel_height, int kernel_width, int padding, int stride, float* kernel_weights,int batchsize_of_data, int input_height, int input_width, float* input)
+float* Direct::passforward(int out_channels, int input_channels, int kernel_height, int kernel_width, int padding, int stride, float* kernel_weights,int batchsize_of_data, int input_height, int input_width, float* input)
 {
   if(kernel_height > input_height || kernel_width > input_width){
       cout << "kernel size is too big " << endl;
       exit(EXIT_FAILURE);
   }
   cudaError_t err = cudaSuccess;
- 
+  padding = 2*padding;
   /* size of matrix with padding*/ 
   int size_input_matrix = batchsize_of_data * input_channels * (input_height+padding) * (input_width+padding) * sizeof(float) ;   // size of input matrix after padding
  
@@ -72,9 +72,9 @@ float *passforward(int out_channels, int input_channels, int kernel_height, int 
   {
       for(c = 0 ; c < input_channels ; c++ )
       {
-          for( h = padding/2 ; h < input_height+padding/2 ; h++ )
+          for( h = padding ; h < input_height+padding ; h++ )
           {
-              for( w = padding/2 ; w < input_width+padding/2 ; w++)
+              for( w = padding ; w < input_width+padding ; w++)
               {
                   h_X[ n*(input_channels*(input_height+padding)*(input_width+padding)) + c*((input_height+padding)*(input_width+padding)) + h*(input_width+padding) + w] =  input[ n*(input_channels*input_height*input_width) + c*(input_height*input_width) + (h-padding/2)*(input_width) + (w-padding/2)];
               }

@@ -17,6 +17,7 @@
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 #include <cublas_v2.h>
+#include "kernels/Direct/direct_conv.h"
 
 
 /* Macro to check CUDNN error and print the error message */
@@ -110,6 +111,8 @@ class Conv2D {
    *  Output - Pointer to the result array (in host memory)
    */
   float* ConvForward(float* input);
+
+  float* Conv_Direct(float* input);
 
  private:
   /* Create Descriptors: 
