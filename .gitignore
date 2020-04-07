@@ -12,3 +12,6 @@
 
 ## ghc files ##
 **/*.h.gch
+
+## Data ##
+forward/data/MiniImageNet/
