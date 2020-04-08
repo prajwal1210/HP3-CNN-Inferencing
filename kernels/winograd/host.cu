@@ -5,8 +5,11 @@ using namespace std;
 
 void gpu_error(cudaError_t const &code) 
 {
-    cerr << "GPUError: Code " << code << " : " << cudaGetErrorString(code) << endl;
-    exit( EXIT_FAILURE );
+    if(code != cudaSuccess)
+    {
+        cerr << "GPUError: Code " << code << " : " << cudaGetErrorString(code) << endl;
+        exit( EXIT_FAILURE );
+    }
 }
 
 // forward(int out_channels, int input_channels, int kernel_height, int kernel_width, int padding, int stride, float* kernel_weights, int batchsize_of_data, int input_height, int input_width, float* input)
@@ -41,6 +44,52 @@ void rearrange(int ch, int bs, int h, int w, float *& in)
 
     in = newin;
 
+}
+
+// forward(int out_channels, int input_channels, int kernel_height, int kernel_width, int padding, int stride, float* kernel_weights, int batchsize_of_data, int input_height, int input_width, float* input)
+
+// Tiling kernel
+
+// grid : (bs, p, q)
+// block : (ch, 1, 1)
+
+// Here, p and q are the tiles dimension for the image.
+// So, if the image is of dimension (h, w) after tiling it would become of dimension (p, q) of tiles of dimension (4, 4)
+
+// Here, we haven't considered multiple output channels yet. This dimension can be included in the grid like (och x bs, p, q) or in the host function itself we can call a loop on the current version over multiple output channels.
+
+// kernel height and width are fixed to (3, 3)
+
+void tilehost(int och, int ch, int bs, int h, int w, float *&in, int &p, int &q, int &outsize, float *&out)
+{
+    // int p, q;
+    p = max((h-2)/2, 0);
+    q = max((w-2)/2, 0);
+    
+    float *devin, *devout;
+    devin = devout = nullptr;
+    int insize = bs * ch * h * w * sizeof(float);
+    outsize = bs * p * q * ch * 4 * 4 * sizeof(float);
+
+    gpu_error(cudaMalloc((void **) & devin, insize));
+    gpu_error(cudaMalloc((void **) & devout, outsize));
+    
+    gpu_error(cudaMemcpy(devin, in, insize, cudaMemcpyHostToDevice));
+
+    // call the kernel function for tiling
+    
+    dim3 grid(bs, p, q);  // 3-D
+    dim3 block(ch, 1, 1); // 1-D
+
+    tile<<<grid, block>>>(devin, devout, h, w);
+
+    // copy from device to host to out.
+
+    delete in;
+    out = new float[outsize];
+
+    gpu_error(cudaMemcpy(out, devout, outsize, cudaMemcpyDeviceToHost));
+    
 }
 
 int main(void) {
