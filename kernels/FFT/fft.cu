@@ -67,20 +67,20 @@ __global__ void align_filer(float* f_in, float* f_out, int H, int W, int D)
 //This utility function can be used to pad the filter(as it needs to be of the size of the input)
 // or to pad the input when required
 //<H+2*pad, W+2*pad,D>
-__global__ void pad_input(float* f_in, float* f_out, int H, int W, int D, int pad)
+__global__ void pad_input(float* f_in, float* f_out, int H, int W, int D, int pad_front, int pad_back)
 {
     int col = blockIdx.x*blockDim.x+threadIdx.x;
     int row = blockIdx.y*blockDim.y+threadIdx.y;
     int dep = blockIdx.z*blockDim.z+threadIdx.z;
 
-    int new_H = H+2*pad; int new_W = W+2*pad; 
+    int new_H = H+ pad_front + pad_back; int new_W = W + pad_front + pad_back; 
  
     int i = dep * new_H * new_W + col * new_W + row;
-    int j = dep * H * W + (col - pad) *W+ (row - pad) ;
+    int j = dep * H * W + (col - pad_front) *W+ (row - pad_front) ;
 
     if(col < new_H && row < new_W && dep < D)
     {
-        if((col < pad || col > H+pad-1) || (row < pad || row > W+pad-1)) f_out[i] = 0;
+        if((col < pad_front || col > H+pad_front-1) || (row < pad_front || row > W+pad_front-1)) f_out[i] = 0;
         else f_out[i] = f_in[j];
     }
 }
@@ -199,7 +199,7 @@ float* convolve_FFT(float * input_layer, float * kernel, int pad, int stride, in
       
       dim3 threads1(1,1,1);
       dim3 grid1(new_H,new_W,D);
-      pad_input<<<grid1,threads1>>>(pad_input_in, pad_input_out, H,W,D,pad);
+      pad_input<<<grid1,threads1>>>(pad_input_in, pad_input_out, H,W,D,pad, pad);
       err = cudaGetLastError(); if(err!=cudaSuccess){fprintf(stderr, "Failed to launch pad input (error code %s)!\n", cudaGetErrorString(err)); exit(EXIT_FAILURE);}
       
       cudaMemcpy(&input_layer_pad[i * D * new_H * new_W], pad_input_out , new_H * new_W * D * sizeof(float), cudaMemcpyDeviceToHost);
@@ -220,12 +220,14 @@ float* convolve_FFT(float * input_layer, float * kernel, int pad, int stride, in
   err = cudaGetLastError(); if(err!=cudaSuccess){fprintf(stderr, "Failed to launch align_filter(error code %s)!\n", cudaGetErrorString(err)); exit(EXIT_FAILURE);}
   
   cudaMemcpy(filter_flip, f_B, fH*fW*fD*sizeof(float), cudaMemcpyDeviceToHost);
+  cudaFree(f_A); cudaFree(f_B);
 
  ///////flip filter end
 
   ///////pad filter 
-  int fpad = (new_H - fH)/2; 
-  int new_fH = fH+2*fpad; int new_fW = fW+2*fpad;
+  int bpad = (new_H - fH)/2;
+  int fpad; if((new_H - fH) % 2 == 0) fpad = bpad; else fpad = bpad + 1;  
+  int new_fH = fH+fpad+bpad; int new_fW = fW+fpad+bpad;
   float *pad_filter_in = NULL; cudaMalloc((void **)&pad_filter_in, fH * fW * fD * sizeof(float));
   float *pad_filter_out = NULL; cudaMalloc((void **)&pad_filter_out, new_fH * new_fW * D * sizeof(float));
   float *filter_pad = (float *)malloc(new_fH* new_fW * D *sizeof(float));
@@ -234,10 +236,11 @@ float* convolve_FFT(float * input_layer, float * kernel, int pad, int stride, in
   dim3 threads2(1,1,1);
   dim3 grid2(new_fH,new_fW,D);
 
-  pad_input<<<grid2,threads2>>>(pad_filter_in, pad_filter_out, fH,fW,D,fpad);
+  pad_input<<<grid2,threads2>>>(pad_filter_in, pad_filter_out, fH,fW,D,fpad,bpad);
   err = cudaGetLastError(); if(err!=cudaSuccess){fprintf(stderr, "Failed to launch pad filter(error code %s)!\n", cudaGetErrorString(err)); exit(EXIT_FAILURE);}
   cudaMemcpy(filter_pad, pad_filter_out , new_fH * new_fW * D * sizeof(float), cudaMemcpyDeviceToHost);
   fH = new_fH; fW = new_fW;
+ cudaFree(pad_filter_in); cudaFree(pad_filter_out);
   //////pad filter end
  
   ///////align filter begin
@@ -252,12 +255,13 @@ float* convolve_FFT(float * input_layer, float * kernel, int pad, int stride, in
   err = cudaGetLastError(); if(err!=cudaSuccess){fprintf(stderr, "Failed to launch align_filter(error code %s)!\n", cudaGetErrorString(err)); exit(EXIT_FAILURE);}
   
   cudaMemcpy(filter_align, d_B, fH*fW*fD*sizeof(float), cudaMemcpyDeviceToHost);
+ cudaFree(d_A); cudaFree(d_B);
   ///////align filter end
  
   ///////Convolve begin (FFT, Pointwise prodcut, IFFT)
   float* conv_result = conv_operation( filter_align, input_layer_pad, H, W, D, BS);
   //////convolve end
-
+ 
   ////////crop output
   fH = kernel_dim[0]; fW = kernel_dim[1] ; fD = kernel_dim[2];
   int oH = H - fH + 1; int oW = W - fW + 1;
