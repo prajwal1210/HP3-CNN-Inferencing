@@ -310,21 +310,15 @@ float* convolve_FFT(float * input_layer, float * kernel, int pad, int stride, in
   
 }
 
-float* forward(int out_size, int channel, int kernel_height, int kernel_width, int pad, int stride, float* kernel_cuda, int batch_size, int height, int width, float* input_layer_cuda)
+float* forward(int out_size, int channel, int kernel_height, int kernel_width, int pad, int stride, float* kernel, int batch_size, int height, int width, float* input_layer)
 {
     int il_dim[3] = {height, width, channel}; int kernel_dim[3] = {kernel_height, kernel_width, channel};
  
     int out_H = ((height - kernel_height + 2 * pad)/stride) + 1; 
     int out_W = ((width - kernel_width + 2 * pad)/stride) + 1;     
     
-    float* input_layer = (float *)malloc(batch_size * channel * height* width * sizeof(float));
-    float* kernel = (float *)malloc(out_size *channel * kernel_height* kernel_width * sizeof(float));
     float* final_output = (float *)malloc(batch_size * out_size * out_H * out_W * sizeof(float)); 
     
-    cudaMemcpy(input_layer, input_layer_cuda , batch_size * channel * height* width * sizeof(float) ,cudaMemcpyDeviceToHost);
-    cudaMemcpy(kernel, kernel_cuda , out_size *channel * kernel_height* kernel_width * sizeof(float) ,cudaMemcpyDeviceToHost);
-    
-   
     for(int l = 0; l < out_size ; l++)
     {
         float* actual_result = convolve_FFT(input_layer, &kernel[l * channel * kernel_height* kernel_width], pad, stride, batch_size, il_dim, kernel_dim);
