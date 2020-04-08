@@ -60,16 +60,16 @@ void rearrange(int ch, int bs, int h, int w, float *& in)
 
 // kernel height and width are fixed to (3, 3)
 
-void tilehost(int och, int ch, int bs, int h, int w, float *&in, float *&out)
+void tilehost(int och, int ch, int bs, int h, int w, float *&in, int &p, int &q, int &outsize, float *&out)
 {
-    int p, q;
+    // int p, q;
     p = max((h-2)/2, 0);
     q = max((w-2)/2, 0);
     
     float *devin, *devout;
     devin = devout = nullptr;
     int insize = bs * ch * h * w * sizeof(float);
-    int outsize = bs * p * q * ch * 4 * 4;
+    outsize = bs * p * q * ch * 4 * 4 * sizeof(float);
 
     gpu_error(cudaMalloc((void **) & devin, insize));
     gpu_error(cudaMalloc((void **) & devout, outsize));

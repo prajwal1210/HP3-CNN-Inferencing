@@ -33,8 +33,8 @@ __global__ void tile(float *devin, float *devout, int h, int w)
 {
     float thrtile[4][4];
     
-    int bs, p, q, ch;
-    bs = gridDim.x;
+    int /*bs,*/ p, q, ch;
+    // bs = gridDim.x;
     p = gridDim.y;
     q = gridDim.z;
     ch = blockDim.x;
@@ -49,9 +49,11 @@ __global__ void tile(float *devin, float *devout, int h, int w)
 
     int offset = (tbs*ch + tch)*h*w;
 
-    for(int th = 2*p, i = 0; i < 4; th++, i++)
+    // float *t = thrtile;
+ 
+    for(int th = 2*tp, i = 0; i < 4; th++, i++)
     {
-        for(int tw = 2*q, j = 0; j < 4; tw++, j++)
+        for(int tw = 2*tq, j = 0; j < 4; tw++, j++)
         {
             thrtile[i][j] = devin[offset + th*w + tw];
         }
@@ -59,13 +61,13 @@ __global__ void tile(float *devin, float *devout, int h, int w)
 
     // copy thrtile to devout for testing
 
-    offset = (((tbs*p + tp)*q + tq)*ch + tch)*16;
+    int offset2 = (((tbs*p + tp)*q + tq)*ch + tch)*16;
 
     for(int i = 0; i < 4; i++)
     {
         for(int j = 0; j < 4; j++)
         {
-            devout[offset + i*4 + j] = thrtile[i][j];
+            devout[offset2 + i*4 + j] = thrtile[i][j];
         }
     }
 }
