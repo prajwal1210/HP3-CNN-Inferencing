@@ -17,7 +17,7 @@
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 #include <cublas_v2.h>
-
+#include "kernels/FFT/fftheader.h"
 
 /* Macro to check CUDNN error and print the error message */
 #define checkCUDNN(expression) {                             \
@@ -110,6 +110,8 @@ class Conv2D {
    *  Output - Pointer to the result array (in host memory)
    */
   float* ConvForward(float* input);
+
+  float* Conv_FFT(float* input);
 
  private:
   /* Create Descriptors: 
