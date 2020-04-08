@@ -72,9 +72,9 @@ float* Direct::passforward(int out_channels, int input_channels, int kernel_heig
   {
       for(c = 0 ; c < input_channels ; c++ )
       {
-          for( h = padding ; h < input_height+padding ; h++ )
+          for( h = padding/2 ; h < input_height+padding/2 ; h++ )
           {
-              for( w = padding ; w < input_width+padding ; w++)
+              for( w = padding/2 ; w < input_width+padding/2 ; w++)
               {
                   h_X[ n*(input_channels*(input_height+padding)*(input_width+padding)) + c*((input_height+padding)*(input_width+padding)) + h*(input_width+padding) + w] =  input[ n*(input_channels*input_height*input_width) + c*(input_height*input_width) + (h-padding/2)*(input_width) + (w-padding/2)];
               }
