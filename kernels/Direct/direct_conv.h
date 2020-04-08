@@ -11,7 +11,7 @@
 
 namespace Direct {
 	float* passforward(int out_channels, int input_channels, int kernel_height, int kernel_width, int padding, int stride, 
-					          float* kernel_weights,int batchsize_of_data, int input_height, int input_width, float* input);
+					          float* d_weights,int batchsize_of_data, int input_height, int input_width, float* d_input);
 }
 
 #endif
