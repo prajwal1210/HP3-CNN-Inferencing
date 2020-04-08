@@ -121,8 +121,8 @@ void tilehost(int och, int ch, int bs, int h, int w, float *&in, int &p, int &q,
     // copy from device to host to out.
 
     delete in;
-    out = new float[outsize];
-    sum = new float[sumsize];
+    out = new float[outsize/sizeof(float)];
+    sum = new float[sumsize/sizeof(float)];
 
     gpu_error(cudaMemcpy(out, devout, outsize, cudaMemcpyDeviceToHost));
     gpu_error(cudaMemcpy(sum, devsum, sumsize, cudaMemcpyDeviceToHost));
@@ -148,7 +148,7 @@ int main(void)
     int insize = bs * ch * h * w * sizeof(float);
     int outsize, sumsize;
  
-    float *in = new float[insize];
+    float *in = new float[insize/sizeof(float)];
     float *t = in;
     float *out, *sum;
  
