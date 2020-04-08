@@ -20,7 +20,7 @@ int main(int argc, char **argv) {
 
   int batchsize, input_h, input_w, input_c;
   
-  string image_path_s = "../data/n02118333_27_fox.jpg";
+  string image_path_s = "../data/sample_fox.png";
   const char* image_path = image_path_s.c_str();
   float* input = sloader.loadSingleColoredImageCHW(image_path, batchsize, input_c, input_h, input_w);
   bool succes = true;

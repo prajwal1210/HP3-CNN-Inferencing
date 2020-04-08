@@ -241,7 +241,7 @@ float* convolve_FFT(float * input_layer, float * kernel, int pad, int stride, in
   err = cudaGetLastError(); if(err!=cudaSuccess){fprintf(stderr, "Failed to launch pad filter(error code %s)!\n", cudaGetErrorString(err)); exit(EXIT_FAILURE);}
   cudaMemcpy(filter_pad, pad_filter_out , new_fH * new_fW * D * sizeof(float), cudaMemcpyDeviceToHost);
   fH = new_fH; fW = new_fW;
- cudaFree(pad_filter_in); cudaFree(pad_filter_out);
+  cudaFree(pad_filter_in); cudaFree(pad_filter_out);
   //////pad filter end
  
   ///////align filter begin
@@ -310,7 +310,8 @@ float* convolve_FFT(float * input_layer, float * kernel, int pad, int stride, in
   
 }
 
-float* forward(int out_size, int channel, int kernel_height, int kernel_width, int pad, int stride, float* kernel, int batch_size, int height, int width, float* input_layer)
+
+float* FFT::forward(int out_size, int channel, int kernel_height, int kernel_width, int pad, int stride, float* kernel, int batch_size, int height, int width, float* input_layer)
 {
     int il_dim[3] = {height, width, channel}; int kernel_dim[3] = {kernel_height, kernel_width, channel};
  
@@ -328,7 +329,7 @@ float* forward(int out_size, int channel, int kernel_height, int kernel_width, i
             {
                 for(int jj = 0; jj < out_W; jj++)
                 {
-                      final_output[ll*out_size*out_H*out_W + l*out_H*out_W + ii * out_W + jj] = round(actual_result[ll*out_H * out_W + ii*out_W+jj]);
+                      final_output[ll*out_size*out_H*out_W + l*out_H*out_W + ii * out_W + jj] = actual_result[ll*out_H * out_W + ii*out_W+jj];
                 }
             }
           }
