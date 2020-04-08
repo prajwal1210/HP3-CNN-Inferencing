@@ -174,6 +174,7 @@ float* conv_operation(float* filter_align, float* input_layer_pad, int H, int W,
     
     float* result1 = new float[BS * D*W*2*((H/2 + 1)) ];
     cudaMemcpy(result1, d_inA, real_size,cudaMemcpyDeviceToHost);
+    cudaFree(d_inA); cudaFree(d_inB); cudaFree(d_outA); cudaFree(d_outB);
     return result1;
 }
 
@@ -255,7 +256,7 @@ float* convolve_FFT(float * input_layer, float * kernel, int pad, int stride, in
   err = cudaGetLastError(); if(err!=cudaSuccess){fprintf(stderr, "Failed to launch align_filter(error code %s)!\n", cudaGetErrorString(err)); exit(EXIT_FAILURE);}
   
   cudaMemcpy(filter_align, d_B, fH*fW*fD*sizeof(float), cudaMemcpyDeviceToHost);
- cudaFree(d_A); cudaFree(d_B);
+  cudaFree(d_A); cudaFree(d_B);
   ///////align filter end
  
   ///////Convolve begin (FFT, Pointwise prodcut, IFFT)
@@ -278,6 +279,7 @@ float* convolve_FFT(float * input_layer, float * kernel, int pad, int stride, in
     err = cudaGetLastError(); if(err!=cudaSuccess){fprintf(stderr, "Failed to launch crop(error code %s)!\n", cudaGetErrorString(err)); exit(EXIT_FAILURE);}
     
     cudaMemcpy(&result2[i*oW*oH], crop_out, oW*oH* sizeof(float) ,cudaMemcpyDeviceToHost);
+    cudaFree(crop_in); cudaFree(crop_out);
   }
   
   ///////crop output end
@@ -298,6 +300,7 @@ float* convolve_FFT(float * input_layer, float * kernel, int pad, int stride, in
           stride_<<<grid6, threads6>>>(stride_in, stride_out ,oH, oW, stride);
           err = cudaGetLastError(); if(err!=cudaSuccess){fprintf(stderr, "Failed to launch stride(error code %s)!\n", cudaGetErrorString(err)); exit(EXIT_FAILURE);}
           cudaMemcpy(&result_s[i*sH*sW], stride_out , sH * sW * sizeof(float) ,cudaMemcpyDeviceToHost);
+          cudaFree(stride_in); cudaFree(stride_out);
       }
       result2 = result_s;
   }
@@ -336,6 +339,5 @@ float* forward(int out_size, int channel, int kernel_height, int kernel_width, i
             }
           }
     }
-
     return final_output;
 }
