@@ -51,6 +51,7 @@ __global__ void align_filer(float* f_in, float* f_out, int H, int W, int D)
     int new_col = ((col - H/2) % H);
     int new_row = ((row - W/2) % W);
     int new_dep = ((dep - D/2) % D);
+    // int new_dep =  (D%2 == 0) ? ((dep - ((D-1)/2)) % D)  : ((dep - D/2) % D);
  
     new_col = new_col < 0 ? H + new_col: new_col;
     new_row = new_row < 0 ? W + new_row: new_row;
@@ -92,7 +93,8 @@ __global__ void crop(float* f_in, float* f_out, int H, int W, int O_H, int O_W, 
     int col = blockIdx.x*blockDim.x+threadIdx.x;
     int row = blockIdx.y*blockDim.y+threadIdx.y;
     //int dep = blockIdx.z*blockDim.z+threadIdx.z;
-    int i =  (D/2) * H * W + col * W + row;
+    // int i =  (D/2) * H * W + col * W + row;
+    int i =  ((D-1)/2) * H * W + col * W + row;
     
     int crop_H = (H - O_H)/2;
     int crop_W = (W - O_W)/2;
@@ -172,9 +174,14 @@ float* conv_operation(float* filter_align, float* input_layer_pad, int H, int W,
 
     cufftExecC2R(bwplan, d_outA, d_inA);
     
-    float* result1 = new float[BS * D*W*2*((H/2 + 1)) ];
+    float* result1 = (float*)malloc(BS * D*W*2*((H/2 + 1)) * sizeof(float));
     cudaMemcpy(result1, d_inA, real_size,cudaMemcpyDeviceToHost);
     cudaFree(d_inA); cudaFree(d_inB); cudaFree(d_outA); cudaFree(d_outB);
+    free(filter_align_in);
+    cufftDestroy(fwplanA);
+    cufftDestroy(fwplanB);
+    cufftDestroy(bwplan);
+    
     return result1;
 }
 
@@ -192,10 +199,11 @@ float* convolve_FFT(float * input_layer, float * kernel, int pad, int stride, in
   ///////pad input
   int new_H = H+2*pad; int new_W = W+2*pad;
   float *input_layer_pad = (float *)malloc(BS * D * new_H* new_W *sizeof(float));
+
   for(int i = 0; i < BS; i++)
   {
       float *pad_input_in = NULL; cudaMalloc((void **)&pad_input_in, H * W * D * sizeof(float));
-      float *pad_input_out = NULL; cudaMalloc((void **)&pad_input_out, new_H * new_W * D * sizeof(float));
+      float *pad_input_out = NULL; cudaMalloc((void **)&pad_input_out, new_H * new_W * D * sizeof(float));  
       cudaMemcpy(pad_input_in, &input_layer[i * D * H * W], H * W * D * sizeof(float) , cudaMemcpyHostToDevice);
       
       dim3 threads1(1,1,1);
@@ -206,6 +214,7 @@ float* convolve_FFT(float * input_layer, float * kernel, int pad, int stride, in
       cudaMemcpy(&input_layer_pad[i * D * new_H * new_W], pad_input_out , new_H * new_W * D * sizeof(float), cudaMemcpyDeviceToHost);
       cudaFree(pad_input_in); cudaFree(pad_input_out);
   }
+
   H = new_H; W = new_W;
   //////pad input end
 
@@ -234,6 +243,7 @@ float* convolve_FFT(float * input_layer, float * kernel, int pad, int stride, in
   float *filter_pad = (float *)malloc(new_fH* new_fW * D *sizeof(float));
 
   cudaMemcpy(pad_filter_in, filter_flip , fH * fW * fD * sizeof(float) , cudaMemcpyHostToDevice);
+  free(filter_flip);
   dim3 threads2(1,1,1);
   dim3 grid2(new_fH,new_fW,D);
 
@@ -249,6 +259,7 @@ float* convolve_FFT(float * input_layer, float * kernel, int pad, int stride, in
   float *d_A = NULL; cudaMalloc((void **)&d_A, fH * fW * fD * sizeof(float));
   float *d_B = NULL; cudaMalloc((void **)&d_B, fH * fW * fD * sizeof(float));
   cudaMemcpy(d_A, filter_pad, fH * fW * fD * sizeof(float), cudaMemcpyHostToDevice);
+  free(filter_pad);
 
   dim3 threads3(1,1,1);
   dim3 grid3(fH,fW,fD);
@@ -261,16 +272,19 @@ float* convolve_FFT(float * input_layer, float * kernel, int pad, int stride, in
  
   ///////Convolve begin (FFT, Pointwise prodcut, IFFT)
   float* conv_result = conv_operation( filter_align, input_layer_pad, H, W, D, BS);
+  free(filter_align);
+  free(input_layer_pad);
   //////convolve end
  
   ////////crop output
   fH = kernel_dim[0]; fW = kernel_dim[1] ; fD = kernel_dim[2];
   int oH = H - fH + 1; int oW = W - fW + 1;
   float* result2 = (float*)malloc(BS * oW*oH* sizeof(float));
+
   for(int i = 0; i < BS; i++)
   {
     float *crop_out = NULL; cudaMalloc((void **)&crop_out, oH * oW * sizeof(float));
-    float *crop_in = NULL; cudaMalloc((void **)&crop_in, D * H * W * sizeof(float));
+    float *crop_in = NULL; cudaMalloc((void **)&crop_in, D * H * W * sizeof(float));  
     cudaMemcpy(crop_in, &conv_result[i * D * H* W],  D * H * W * sizeof(float),cudaMemcpyHostToDevice);
     
     dim3 threads5(1,1,1);
@@ -281,7 +295,7 @@ float* convolve_FFT(float * input_layer, float * kernel, int pad, int stride, in
     cudaMemcpy(&result2[i*oW*oH], crop_out, oW*oH* sizeof(float) ,cudaMemcpyDeviceToHost);
     cudaFree(crop_in); cudaFree(crop_out);
   }
-  
+  free(conv_result);
   ///////crop output end
 
   ///////stride output stride_(float* f_in, float* f_out, int H, int W, int stride)
@@ -289,11 +303,11 @@ float* convolve_FFT(float * input_layer, float * kernel, int pad, int stride, in
   {
       int sH = oH / stride + 1; int sW = oW / stride + 1; 
       float* result_s = (float *)malloc(BS* sH*sW*sizeof(float));
-   
+
       for(int i = 0; i < BS ; i++)
       {
           float *stride_in = NULL; cudaMalloc((void **)&stride_in, oH * oW * sizeof(float));
-          float *stride_out = NULL; cudaMalloc((void **)&stride_out, sH * sW * sizeof(float));
+          float *stride_out = NULL; cudaMalloc((void **)&stride_out, sH * sW * sizeof(float));  
           cudaMemcpy(stride_in, &result2[i * oW* oH], oW*oH* sizeof(float) ,cudaMemcpyHostToDevice);
           dim3 threads6(1,1,1);
           dim3 grid6(oH,oW,1);
@@ -302,6 +316,7 @@ float* convolve_FFT(float * input_layer, float * kernel, int pad, int stride, in
           cudaMemcpy(&result_s[i*sH*sW], stride_out , sH * sW * sizeof(float) ,cudaMemcpyDeviceToHost);
           cudaFree(stride_in); cudaFree(stride_out);
       }
+      free(result2);
       result2 = result_s;
   }
   ///////stride output end
@@ -323,16 +338,17 @@ float* FFT::forward(int out_size, int channel, int kernel_height, int kernel_wid
     for(int l = 0; l < out_size ; l++)
     {
         float* actual_result = convolve_FFT(input_layer, &kernel[l * channel * kernel_height* kernel_width], pad, stride, batch_size, il_dim, kernel_dim);
-          for(int ll = 0; ll < batch_size; ll++)  
-          {
+        for(int ll = 0; ll < batch_size; ll++)  
+        {
             for(int ii = 0; ii < out_H; ii++)
             {
                 for(int jj = 0; jj < out_W; jj++)
                 {
-                      final_output[ll*out_size*out_H*out_W + l*out_H*out_W + ii * out_W + jj] = actual_result[ll*out_H * out_W + ii*out_W+jj];
+                        final_output[ll*out_size*out_H*out_W + l*out_H*out_W + ii * out_W + jj] = actual_result[ll*out_H * out_W + ii*out_W+jj];
                 }
             }
-          }
+        }
+        free(actual_result);
     }
     return final_output;
 }
