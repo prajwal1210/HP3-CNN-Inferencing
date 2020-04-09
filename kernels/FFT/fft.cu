@@ -96,14 +96,16 @@ __global__ void crop(float* f_in, float* f_out, int H, int W, int O_H, int O_W, 
     // int i =  (D/2) * H * W + col * W + row;
     int i =  ((D-1)/2) * H * W + col * W + row;
     
-    int crop_H = (H - O_H)/2;
-    int crop_W = (W - O_W)/2;
+    int crop_H_b = (H - O_H)/2; int crop_H_f;
+    int crop_W_b = (W - O_W)/2; int crop_W_f;
+    if((H - O_H) % 2 == 0) crop_H_f = crop_H_b; else crop_H_f = crop_H_b + 1;
+    if((W - O_W) % 2 == 0) crop_W_f = crop_W_b; else crop_W_f = crop_W_b + 1;
 
-    int j = (col - crop_H) * O_W+ (row - crop_W);
+    int j = (col - crop_H_f) * O_W+ (row - crop_W_f);
 
     if(col < H && row < W)
     {
-        if(col >= crop_H && col < H - crop_H && row >= crop_W && row < W - crop_W)f_out[j] = f_in[i];
+        if(col >= crop_H_f && col < H - crop_H_b && row >= crop_W_f && row < W - crop_W_b)f_out[j] = f_in[i];
     }
 }
 
