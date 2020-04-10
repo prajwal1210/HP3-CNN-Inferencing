@@ -7,6 +7,15 @@
 
 using namespace std;
 
+void gpu_error(cudaError_t const &code) 
+{
+    if(code != cudaSuccess)
+    {
+        cerr << "GPUError: Code " << code << " : " << cudaGetErrorString(code) << endl;
+        exit( EXIT_FAILURE );
+    }
+}
+
 __global__ void tile(float *devin, float *devout, float *devsum, int h, int w)
 {
     float thrtile[4][4];
@@ -84,15 +93,6 @@ __global__ void tile(float *devin, float *devout, float *devsum, int h, int w)
 
 }
 
-void gpu_error(cudaError_t const &code) 
-{
-    if(code != cudaSuccess)
-    {
-        cerr << "GPUError: Code " << code << " : " << cudaGetErrorString(code) << endl;
-        exit( EXIT_FAILURE );
-    }
-}
-
 void tilehost(int och, int ch, int bs, int h, int w, float *&in, int &p, int &q, int &outsize, float *&out, int &sumsize, float *&sum)
 {
     // int p, q;
@@ -133,17 +133,64 @@ void tilehost(int och, int ch, int bs, int h, int w, float *&in, int &p, int &q,
     
 }
 
+void padding(float *&in, int bs, int ch, int &h, int &w, int pad)
+{
+    // Here, after adding pad we also round up h, w to become a multiple of tile.
+    // This is done such that the actual matrix is present at top left of this matrix.
+
+    int newh, neww;
+    newh = h + 2*pad;
+    neww = w + 2*pad;
+    if(newh%2)
+        newh++;
+    if(neww%2)
+        neww++;
+    if(newh < 4)
+        newh = 4;
+    if(neww < 4)
+        neww = 4;
+
+    int slices = bs*ch;
+    int newhw = newh*neww;
+    float *newin = new float[slices*newhw];
+    float *tin = in, *tnewin = newin;
+    LOOP(slices)
+    {
+        LOOP(newh)
+        {
+            LOOP(neww)
+            {
+                if(tnewh >= pad && tnewh-pad < h && tneww >= pad && tneww-pad < w)
+                {
+                    *(tnewin++) = *(tin++);
+                }
+                else
+                {
+                    *(tnewin++) = 0;
+                }
+            }
+        }
+    }
+
+    delete in;
+    in = newin;
+
+    h = newh;
+    w = neww;
+
+}
+
 int main(void) 
 {
     auto engine = default_random_engine(time(nullptr));
     auto rng = uniform_real_distribution<float>();
 
-    int bs, ch, h, w, p, q;
+    int bs, ch, h, w, p, q, oldh, oldw;
     
     bs = 1;
     ch = 2;
-    h = 9;
-    w = 9;
+    oldh = h = 1;
+    oldw = w = 1;
     
     int insize = bs * ch * h * w * sizeof(float);
     int outsize, sumsize;
@@ -166,6 +213,34 @@ int main(void)
         }
     }
  
+    LOOP(bs)
+    {
+        cout<<"{ ";
+        LOOP(ch)
+        {
+            cout<<"{ ";
+            LOOP(h)
+            {
+                cout<<"{ ";
+                LOOP(w)
+                {
+                    cout<<in[((tbs*ch+tch)*h+th)*w+tw]<<" ";
+                }
+                cout<<"}\n";
+            }
+            cout<<"}\n";
+        }
+        cout<<"}\n";
+    }
+
+    cout<<"\nPadding\n";
+
+    int pad = 1;
+
+    padding(in, bs, ch, h, w, pad);
+
+    cout<<"\nPadding done\n";
+    
     LOOP(bs)
     {
         cout<<"{ ";
