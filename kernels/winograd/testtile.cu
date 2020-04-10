@@ -83,7 +83,7 @@ __global__ void amul(int tbs, int tp, int tq, int bs, int och, int p, int q, flo
         {1,0},
         {1,1},
         {1,-1},
-        {0,1}
+        {0,-1}
     };
     int x = threadIdx.x;
     float *temp = (float *)malloc(2*4*sizeof(float));
@@ -236,7 +236,7 @@ __global__ void tile(int bs, int p, int q, int ch, float *devin, float *devout, 
       cudaDeviceSynchronize();
   }
 }
-void tilehost(int och, int ch, int bs, int h, int w, int pad, float *&in, int &p, int &q, int &oph, int &opw, int &outsize, float *&out, int &sumsize, float *&sum, int &ysize, float *&Y, float *&cutY, float *kwt)
+void tilehost(int och, int ch, int bs, int h, int w, int pad, float *&in, int &oph, int &opw, float *kwt, float *&cutY)
 {
     float *devin, *devinnopad;
     int insize = bs * ch * h * w * sizeof(float);
@@ -270,8 +270,8 @@ void tilehost(int och, int ch, int bs, int h, int w, int pad, float *&in, int &p
     gpu_error(cudaFree(devinnopad));
     h = newh;
     w = neww;
-    p = max((h-2)/2, 0);
-    q = max((w-2)/2, 0);
+    int p = max((h-2)/2, 0);
+    int q = max((w-2)/2, 0);
     
     float *devout, *devsum, *devkwt, *devU, *devY, *devcutY;
     float *devfin;
@@ -279,9 +279,9 @@ void tilehost(int och, int ch, int bs, int h, int w, int pad, float *&in, int &p
  
     int kwtsize = och*ch*3*3*sizeof(float);
     int finsize = bs * p * q * ch * och * 4 * 4 * sizeof(float);
-    outsize = bs * och * p * q * ch * 4 * 4 * sizeof(float);
-    sumsize = bs * och * p * q * 4 * 4 * sizeof(float);
-    ysize = bs * och * p * q * 2 * 2 * sizeof(float);
+    int outsize = bs * och * p * q * ch * 4 * 4 * sizeof(float);
+    int sumsize = bs * och * p * q * 4 * 4 * sizeof(float);
+    int ysize = bs * och * p * q * 2 * 2 * sizeof(float);
     int usize = och*ch*4*4*sizeof(float);
     int cutsize = bs*och*oph*opw*sizeof(float);
  
@@ -305,20 +305,11 @@ void tilehost(int och, int ch, int bs, int h, int w, int pad, float *&in, int &p
     dim3 cutgrid(bs*och, p, q);
     dim3 cutblock(1,1,1);
 
-
-
-    cutpad<<<cutgrid, cutblock>>> (devY, devcutY, oph, opw);
-    
+    cutpad<<<cutgrid, cutblock>>> (devY, devcutY, oph, opw);   
     // copy from device to host.
     delete in;
-    out = (float *)malloc(outsize);
-    sum = (float *)malloc(sumsize);
-    Y = (float *)malloc(ysize);
     cutY = (float *)malloc(cutsize);
 
-    cudaSafeCall(cudaMemcpy(out, devout, outsize, cudaMemcpyDeviceToHost));
-    cudaSafeCall(cudaMemcpy(sum, devsum, sumsize, cudaMemcpyDeviceToHost));
-    cudaSafeCall(cudaMemcpy(Y, devY, ysize, cudaMemcpyDeviceToHost));
     cudaSafeCall(cudaMemcpy(cutY, devcutY, cutsize, cudaMemcpyDeviceToHost));
 
     gpu_error(cudaFree(devin));
@@ -333,9 +324,10 @@ void tilehost(int och, int ch, int bs, int h, int w, int pad, float *&in, int &p
 
 int main(void) 
 {
-    auto engine = default_random_engine(0);
+    auto engine = default_random_engine(7);
     auto rng = uniform_real_distribution<float>();
-    int bs, ch, h, w, p, q, och, pad;
+    int bs, ch, h, w, och, pad; 
+    //bs - batch size, ch - input channel, h - input height, w - input weight , pad - padding required
     
     bs = 2;
     ch = 2;
@@ -344,10 +336,9 @@ int main(void)
     och = 1;
     pad = 0;
     int insize = bs * ch * h * w * sizeof(float);
-    int outsize, sumsize, ysize;
     float *in = new float[insize/sizeof(float)];
     float *t = in;
-    float *out, *sum, *Y, *cutY;
+    float  *cutY; //final convolved output
     float *kernel_weights = new float[och*3*3*ch];
     int tsize = och*ch*3*3;
     float *tkw = kernel_weights;
@@ -356,8 +347,8 @@ int main(void)
     {
         tkw[ttsize] = 0;
     }
-    tkw[0] = 1;
-    tkw[9] = 1;
+    tkw[0] = tkw[8] = 1;
+    tkw[9] = tkw[17] = 1;
     //put input
     LOOP(bs)
     {
@@ -392,11 +383,11 @@ int main(void)
         cout<<"}\n";
     }
     cout<<"\nConvolving\n";
-    int oph, opw;
-    tilehost(och, ch, bs, h, w, pad, in, p, q, oph, opw, outsize, out, sumsize, sum, ysize, Y, cutY, kernel_weights);
+    
+    int oph, opw; //output height, output weight
+    tilehost(och, ch, bs, h, w, pad, in, oph, opw, kernel_weights, cutY);
 
     cout<<"\nConvolution finished\n\n";
-
       
     LOOP(bs)
     {
@@ -417,35 +408,5 @@ int main(void)
         cout<<"}\n";
     }
     cout<<"}\n";
-   
-
-    // LOOP(bs)
-    // {
-    //     cout<<"{ ";
-    //     LOOP(och)
-    //     {
-    //         cout<<"{ ";
-    //         LOOP(p)
-    //         {
-    //             cout<<"{ ";
-    //             LOOP(q)
-    //             {
-    //                 cout<<"{ ";
-    //                 for(int i = 0; i < 2; i++)
-    //                 {
-    //                     for(int j = 0; j < 2; j++)
-    //                     {
-    //                         cout<<Y[((((tbs*och+toch)*p+tp)*q+tq)*2+i)*2+j]<<",";
-    //                     }
-    //                     cout<<";\n";
-    //                 }
-    //                 cout<<"}\n";
-    //             }
-    //             cout<<"}\n";
-    //         }
-    //         cout<<"}\n";
-    //     }
-    //     cout<<"}\n";
-    // }
     return 0;
 }
