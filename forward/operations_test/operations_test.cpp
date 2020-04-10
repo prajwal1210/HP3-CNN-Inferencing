@@ -107,7 +107,7 @@ float* CHWToHWC(float* image, int rows, int cols, int channels) {
 	return data;
 }	
 
-float* Conv2D_func(cudnnHandle_t cudnn, float* input, int in_h, int in_w, int& out_c, int& out_h, int& out_w) {
+float* Conv2D_func(cudnnHandle_t cudnn, float* input, int in_h, int in_w, int& out_c, int& out_h, int& out_w, customAlgorithmType t) {
 	const float kernel_template[3][3] = {
 	{1,  1, 1},
 	{1, -8, 1},
@@ -125,7 +125,7 @@ float* Conv2D_func(cudnnHandle_t cudnn, float* input, int in_h, int in_w, int& o
 	  }
 	}
 
-	Conv2D conv1(3, 3, 3, 3, 1, 1, 1, 1, in_h, in_w, cudnn);
+	Conv2D conv1(3, 3, 3, 3, 1, 1, 1, 1, in_h, in_w, t, cudnn);
 	conv1.SetWeights(&(h_kernel[0][0][0][0]));
 
 	float* h_output = conv1.ConvForward(input);
@@ -199,13 +199,21 @@ float* Linear_func(cudnnHandle_t cudnn, float* image, int out_nodes, int in_node
 }
 
 
-int main() {
+int main(int argc, char** argv) {
   cudnnHandle_t cudnn;
   checkCUDNN(cudnnCreate(&cudnn));
 
+  customAlgorithmType t = t_CUDNN;
+  if(argc == 2) {
+    std::string algo(argv[1]);
+    if(algo == "FFT") {
+      t = t_CUSTOM_FFT;
+    }
+  }
+
   /* Read Image */
   Mat image = loadImage("../data/sample_fox.png");
-      float* im = image.ptr<float>(0);
+  float* im = image.ptr<float>(0);
   float* re_im;
 
   int batchsize = 1;
@@ -221,7 +229,7 @@ int main() {
 
   /* Conv Layer */
   float* h_output;
-  h_output = Conv2D_func(cudnn, im, h, w, channels, h, w);
+  h_output = Conv2D_func(cudnn, im, h, w, channels, h, w, t);
   re_im = CHWToHWC(h_output, h, w, channels);
   save_image("cudnnconv.png", re_im, h, w);
 

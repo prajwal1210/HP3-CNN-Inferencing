@@ -16,7 +16,10 @@ clean:
 	rm *.png
 	rm *.txt
 
-run:
+run_cudnn:
 	./test
 	python operations_test.py
 	
+run_fft:
+	./test
+	python operations_test.py "FFT"

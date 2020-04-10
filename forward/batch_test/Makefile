@@ -20,11 +20,17 @@ clean:
 	rm test
 	rm *.txt
 
-run:
+run_cudnn:
 	./test "$(PROJECT_DIR)/pretrained-models/vgg19.pb" 1>/dev/null
 	python batch_test.py vgg
 	@echo ""
 	./test "$(PROJECT_DIR)/pretrained-models/alexnet.pb" 1>/dev/null
 	python batch_test.py alex 
-	
+
+run_fft:
+	./test "$(PROJECT_DIR)/pretrained-models/vgg19.pb" "FFT" 1>/dev/null
+	python batch_test.py vgg
+	@echo ""
+	./test "$(PROJECT_DIR)/pretrained-models/alexnet.pb" "FFT" 1>/dev/null
+	python batch_test.py alex 
 	

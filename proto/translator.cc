@@ -7,7 +7,7 @@
 
 #include "translator.h"
 
-Conv2D* Translator::translateConv2D_layer(DeepNet::Layer& layer, cudnnHandle_t cudnn, int input_height, int input_width, int batchsize) {
+Conv2D* Translator::translateConv2D_layer(DeepNet::Layer& layer, cudnnHandle_t cudnn, int input_height, int input_width, int batchsize, customAlgorithmType algo) {
   if(!layer.has_conv()) {
     std::cerr << "Error in translateConv2D_layer: Not a conv2D layer" << std::endl;
     return NULL;
@@ -15,7 +15,7 @@ Conv2D* Translator::translateConv2D_layer(DeepNet::Layer& layer, cudnnHandle_t c
   
   DeepNet::ConvLayer2D conv2D = layer.conv();
   Conv2D* retVal = new Conv2D(conv2D.out_channels(), conv2D.in_channels(), conv2D.height() ,conv2D.width(), 
-                batchsize, conv2D.padding(), conv2D.stride(), conv2D.dilation(), input_height, input_width, cudnn);
+                batchsize, conv2D.padding(), conv2D.stride(), conv2D.dilation(), input_height, input_width, algo, cudnn);
   
   float* weights = new float[conv2D.weight_size()];
   for(int i = 0; i < conv2D.weight_size(); i++)
