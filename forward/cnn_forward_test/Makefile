@@ -21,10 +21,10 @@ clean:
 	rm *.txt
 
 run:
-	./test "$(PROJECT_DIR)/pretrained-models/vgg19.pb"
+	./test "$(PROJECT_DIR)/pretrained-models/vgg19.pb" 1>/dev/null
 	python cnn_forward_test.py vgg
 	@echo ""
-	./test "$(PROJECT_DIR)/pretrained-models/alexnet.pb"
+	./test "$(PROJECT_DIR)/pretrained-models/alexnet.pb" 1>/dev/null
 	python cnn_forward_test.py alex 
 	
 	

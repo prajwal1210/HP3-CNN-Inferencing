@@ -113,6 +113,8 @@ class Conv2D {
 
   float* Conv_FFT(float* input);
 
+  float* Conv_CUDNN(float* input);
+  
  private:
   /* Create Descriptors: 
    *  Creates the necessary descriptors based on the data members (helper to the constructor)

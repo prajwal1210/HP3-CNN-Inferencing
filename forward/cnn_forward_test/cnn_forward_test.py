@@ -31,7 +31,7 @@ else:
     exit(1)
 
 #Load the image
-res = loadImage('../data/n02118333_27_fox.jpg')
+res = loadImage('../data/sample_fox.png')
 
 #Process the image for feeding it to the model appropriately
 res = np.reshape(res, (1,res.shape[0],res.shape[1],res.shape[2]))

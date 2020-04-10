@@ -69,6 +69,8 @@ void Conv2D::GetOutputDims(int* out_n, int* out_c, int* out_h, int* out_w) {
 /* (Conv2D)ConvForward Implementation : Uses CUDNN function call */
 float* Conv2D::ConvForward(float* input) {
   return this->Conv_FFT(input);
+  // std::cout << this->convolution_algorithm << std::endl;
+  // std::cout << CUDNN_CONVOLUTION_FWD_ALGO_FFT << std::endl;
   // std::cout << "Workspace size: " << (this->workspace_bytes / 1048576.0) << "MB" << std::endl;
 
   // void* d_workspace{nullptr};
@@ -150,24 +152,12 @@ float* Conv2D::Conv_FFT(float* input) {
   this->GetOutputDims(&out_n, &out_c, &out_h, &out_w);
   int image_out_bytes = this->batchsize * this->out_channels * out_h * out_w * sizeof(float);
   
-  std::cout << "Input - ( " << batchsize << ", " << this->in_channels << ", " << this->input_height << ", " << this->input_width << " )" << std::endl;
-  std::cout << "Output - ( " << batchsize << ", " << this->out_channels << ", " << out_h << ", " << out_w << " )" << std::endl;
+  std::cout << "Input - ( " << this->batchsize << ", " << this->in_channels << ", " << this->input_height << ", " << this->input_width << " )" << std::endl;
+  std::cout << "Output - ( " << this->batchsize << ", " << this->out_channels << ", " << out_h << ", " << out_w << " )" << std::endl;
 
-  float* d_input{nullptr};
-  cudaMalloc(&d_input, image_in_bytes);
-  cudaMemcpy(d_input, input, image_in_bytes, cudaMemcpyHostToDevice);
+  float* h_output = FFT::forward(this->out_channels, this->in_channels, this->h, this->w, this->padding, this->stride, this->weights,
+              this->batchsize, this->input_height, this->input_width, input);
 
-
-  int kernel_size = this->out_channels * this->in_channels * this->h * this->w * sizeof(float);
-
-
-  float* d_kernel{nullptr};
-  cudaMalloc(&d_kernel, kernel_size);
-  cudaMemcpy(d_kernel, this->weights, kernel_size, cudaMemcpyHostToDevice);
-
-  float* h_output = FFT::forward(this->out_channels, this->in_channels, this->h, this->w, this->padding, this->stride, d_kernel,
-              this->batchsize, this->input_height, this->input_width, d_input);
-  
   const float alpha = 1, beta = 0;
   float* d_bias{nullptr};
   float* d_output{nullptr};
@@ -191,8 +181,6 @@ float* Conv2D::Conv_FFT(float* input) {
   }
 
   /* Free the temporary memory */
-  cudaFree(d_kernel);
-  cudaFree(d_input);
   if (this->bias_present) {
     cudaFree(d_output);
     cudaFree(d_bias);
@@ -252,6 +240,10 @@ void Conv2D::CreateDescriptors() {
                                                 CUDNN_CONVOLUTION_FWD_PREFER_FASTEST,
                                                 /*memoryLimitInBytes=*/0,
                                                 &(this->convolution_algorithm)));
+
+  if(this->input_height + 2*this->padding <= 256) {
+    this->convolution_algorithm = CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING;
+  }
   
   this->workspace_bytes = 0;
   checkCUDNN(cudnnGetConvolutionForwardWorkspaceSize(this->cudnn,

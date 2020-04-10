@@ -9,7 +9,7 @@
 
 namespace FFT {
   float* forward(int out_size, int channel, int kernel_height, int kernel_width, int pad, int stride, float* kernel,
-              int batch_size, int height, int width, float* input_layer);
+              int batch_size, int height, int width, float* input_layer_without_padding);
 }
 
 #endif

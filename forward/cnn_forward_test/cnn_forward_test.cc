@@ -34,6 +34,8 @@ int main(int argc, char **argv) {
     fprintf(fp, "%f ",output[i]);
   fprintf(fp, "\n");
 
+  fclose(fp);
+
   google::protobuf::ShutdownProtobufLibrary();
   
   return 0;

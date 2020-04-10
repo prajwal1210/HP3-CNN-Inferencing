@@ -204,7 +204,7 @@ int main() {
   checkCUDNN(cudnnCreate(&cudnn));
 
   /* Read Image */
-  Mat image = loadImage("../data/n02118333_27_fox.jpg");
+  Mat image = loadImage("../data/sample_fox.png");
       float* im = image.ptr<float>(0);
   float* re_im;
 

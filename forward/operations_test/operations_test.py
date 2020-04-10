@@ -78,7 +78,7 @@ def compareOutputs(diff, layer, total_img_size):
 
 
 #Load the image
-res = loadImage('../data/n02118333_27_fox.jpg')
+res = loadImage('../data/sample_fox.png')
 
 
 #Process the image for feeding it to the model appropriately
@@ -116,14 +116,14 @@ model_lin = nn.Sequential(
     nn.AvgPool2d(4),
     nn.Sigmoid(),
     nn.Flatten(),
-    nn.Linear(37674,100)
+    nn.Linear(12288,100)
 )
 
 #Create the custom Kernel
 h_kernel =createKernel()
 
 #Create weight and bias
-w, b = createWeightAndBias(100,37674)
+w, b = createWeightAndBias(100,12288)
 
 #Set the kernel to the conv layer
 with torch.no_grad():
