@@ -30,6 +30,6 @@ namespace CNN {
    * Input  : DeepNet::Network object, references to dimensions of the input, pointer to the input array, reference to the status flag
    * Output : Pointer to the final layer output (side effect - sets the dimensions accordingly)
    */
-  float* forwardPass(DeepNet::Network net, int& batchsize, int& input_h, int& input_w, int& input_c, float* input, bool& succes);
+  float* forwardPass(DeepNet::Network net, int& batchsize, int& input_h, int& input_w, int& input_c, float* input, customAlgorithmType algo, bool& succes);
 }
 #endif

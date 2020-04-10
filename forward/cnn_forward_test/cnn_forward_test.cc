@@ -8,9 +8,17 @@
 
 int main(int argc, char **argv) {
   
-  if(argc != 2) {
+  if(argc < 2) {
     std::cerr << "Please provide path to the model to load relative to the executable directory" << std::endl;
     exit(1);  
+  }
+
+  customAlgorithmType t = t_CUDNN;
+  if(argc == 3) {
+    std::string algo(argv[2]);
+    if(algo == "FFT") {
+      t = t_CUSTOM_FFT;
+    }
   }
 
   DeepNet::Network net;
@@ -20,12 +28,12 @@ int main(int argc, char **argv) {
 
   int batchsize, input_h, input_w, input_c;
   
-  string image_path_s = "../data/n02118333_27_fox.jpg";
+  string image_path_s = "../data/sample_fox.png";
   const char* image_path = image_path_s.c_str();
   float* input = sloader.loadSingleColoredImageCHW(image_path, batchsize, input_c, input_h, input_w);
   bool succes = true;
 
-  float* output = CNN::forwardPass(net, batchsize, input_h, input_w, input_c, input, succes);
+  float* output = CNN::forwardPass(net, batchsize, input_h, input_w, input_c, input, t, succes);
 
   FILE* fp;
   fp = fopen("final_out.txt" , "w");
@@ -33,6 +41,8 @@ int main(int argc, char **argv) {
   for(int i = 0; i < batchsize * input_c * input_h * input_w; i++)
     fprintf(fp, "%f ",output[i]);
   fprintf(fp, "\n");
+
+  fclose(fp);
 
   google::protobuf::ShutdownProtobufLibrary();
   

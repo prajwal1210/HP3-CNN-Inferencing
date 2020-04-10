@@ -26,7 +26,7 @@ void CNN::loadCNNModelFromFile(const char* model_file, DeepNet::Network& net) {
 }
 
 /* Implementation of forwardPass */
-float* CNN::forwardPass(DeepNet::Network net, int& batchsize, int& input_h, int& input_w, int& input_c, float* input, bool& succes) {
+float* CNN::forwardPass(DeepNet::Network net, int& batchsize, int& input_h, int& input_w, int& input_c, float* input, customAlgorithmType algo, bool& succes) {
   Translator T;
   
   cudnnHandle_t cudnn;
@@ -44,7 +44,7 @@ float* CNN::forwardPass(DeepNet::Network net, int& batchsize, int& input_h, int&
     switch (net_layer.type()) {
       case DeepNet::Layer::CONV:
         {
-          Conv2D* conv = T.translateConv2D_layer(net_layer, cudnn, input_h, input_w, batchsize);
+          Conv2D* conv = T.translateConv2D_layer(net_layer, cudnn, input_h, input_w, batchsize, algo);
           if(conv == NULL)
           {
             succes = false;

@@ -33,10 +33,6 @@ else:
 #Load the image
 data_path = "../data/MiniImageNet/"
 
-# image_list = ["100037201_cb185216de.jpg","100347132_4e414d7693.jpg","101972704_12f7cfefbc.jpg","1053998542_2899bcbf45.jpg",
-#             "107790786_4ab33e760c.jpg","108185930_8bd6b2bfa6.jpg","1088685175_b5f9b52701.jpg","1151949711_937ac32a98.jpg",
-#             "1187846064_76a5393c50.jpg","119433985_5657cecb8b.jpg","1216486078_7a0b443db3.jpg","1236564264_c4502e3539.jpg",
-#             "1240553252_b7e98f7965.jpg","1242886740_e43abf2d30.jpg","1245758821_8fb99d5c51.jpg","1254029720_1f79c93889.jpg"]
 
 with open(data_path + "ImageLists.txt", "r") as f:
     lines = f.readlines()
