@@ -108,6 +108,7 @@ __global__ void align_filer(float* f_in, float* f_out, int H, int W, int D)
     int new_col = ((col - H/2) % H);
     int new_row = ((row - W/2) % W);
     int new_dep = ((dep - D/2) % D);
+    // int new_dep =  (D%2 == 0) ? ((dep - ((D-1)/2)) % D)  : ((dep - D/2) % D);
  
     new_col = new_col < 0 ? H + new_col: new_col;
     new_row = new_row < 0 ? W + new_row: new_row;
