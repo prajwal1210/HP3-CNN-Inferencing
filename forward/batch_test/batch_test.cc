@@ -16,7 +16,10 @@ int main(int argc, char **argv) {
   customAlgorithmType t = t_CUDNN;
   if(argc == 3) {
     std::string algo(argv[2]);
-    if(algo == "FFT") {
+    if(algo == "DIRECT") {
+      t = t_CUSTOM_DIRECT;
+    }
+    else if(algo == "FFT") {
       t = t_CUSTOM_FFT;
     }
   }

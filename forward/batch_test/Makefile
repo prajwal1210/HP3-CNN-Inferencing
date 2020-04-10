@@ -11,9 +11,10 @@ CNN_FORWARD_LIBRARY = $(shell find $(PROJECT_DIR) -name cnn_forward.cc)
 DATA_UTIL_LIBRARY = $(shell find $(PROJECT_DIR) -name data_util.cc)
 TRANSLATOR_LIBRARY = $(shell find $(PROJECT_DIR) -name translator.cc)
 PROTO_LIBRARY = $(shell find $(PROJECT_DIR) -name network.pb.cc)
+DIRECT_CONV = $(shell find $(PROJECT_DIR) -name direct_conv.cu)
 FFT_KERNEL = $(shell find $(PROJECT_DIR) -name fft.cu)
 
-test: batch_test.cc $(OPERATIONS_LIBRARY) $(CNN_FORWARD_LIBRARY) $(DATA_UTIL_LIBRARY) $(TRANSLATOR_LIBRARY) $(PROTO_LIBRARY) $(FFT_KERNEL)
+test: batch_test.cc $(OPERATIONS_LIBRARY) $(CNN_FORWARD_LIBRARY) $(DATA_UTIL_LIBRARY) $(TRANSLATOR_LIBRARY) $(PROTO_LIBRARY) $(FFT_KERNEL) $(DIRECT_CONV)
 	$(NVCC) -I $(PROJECT_DIR) -L $(CUBLAS) $(CXXFLAGS) $? $(OPENCV_LIB_FLAGS) $(PROTOBUF_LIB_FLAGS) $(CUDA_LIB_FLAGS) -o $@
 
 clean:
@@ -26,6 +27,14 @@ run_cudnn:
 	@echo ""
 	./test "$(PROJECT_DIR)/pretrained-models/alexnet.pb" 1>/dev/null
 	python batch_test.py alex 
+
+run_direct:
+	./test "$(PROJECT_DIR)/pretrained-models/vgg19.pb" "DIRECT" 1>/dev/null
+	python batch_test.py vgg
+	@echo ""
+	./test "$(PROJECT_DIR)/pretrained-models/alexnet.pb" "DIRECT" 1>/dev/null
+	python batch_test.py alex 
+
 
 run_fft:
 	./test "$(PROJECT_DIR)/pretrained-models/vgg19.pb" "FFT" 1>/dev/null
