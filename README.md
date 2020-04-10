@@ -16,6 +16,34 @@ Here :
 * Adding Profilining, Plotting and Analysis for both VGG and AlexNet **(Hard Deadline: Saturday - 11th April)**
 * Presentation and Documentation **(Hard Deadline: Monday - 13th April )**
 
+## Testing your kernel outputs
+
+Use the sample image - `./forward/data/n02118333_27_fox.jpg`
+
+The test file - `./forward/operations_test/operations_test.cpp` has functions to load, save image (using OpenCV) and to create the specific kernel weights required for this test under Conv2D_func as :
+
+	const float kernel_template[3][3] = {
+	{1, 1, 1},
+	{1, -8, 1},
+	{1, 1, 1}};
+
+	  
+
+	float h_kernel[3][3][3][3];
+	for (int kernel = 0; kernel < 3; ++kernel) {
+	 for (int channel = 0; channel < 3; ++channel) {
+	  for (int row = 0; row < 3; ++row) {
+	   for (int column = 0; column < 3; ++column) {
+		h_kernel[kernel][channel][row][column] = kernel_template[row][column];
+	}
+	  }
+	 }
+	}
+
+The expected output for this image, using those load functions and that kernel is given as the file - `./forward/data/sample_convout_fox.png`
+
+The output of your kernel match this sample output and pass this test
+
 ## Compile Instructions
 
 ### Tests
