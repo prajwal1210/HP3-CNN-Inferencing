@@ -15,6 +15,8 @@
 #include <fstream>
 #include <string>
 #include <sstream>
+#include <vector>
+
 
 #include "forward/operations.h"
 #include "proto/network.pb.h"
@@ -30,6 +32,7 @@ namespace CNN {
    * Input  : DeepNet::Network object, references to dimensions of the input, pointer to the input array, reference to the status flag
    * Output : Pointer to the final layer output (side effect - sets the dimensions accordingly)
    */
-  float* forwardPass(DeepNet::Network net, int& batchsize, int& input_h, int& input_w, int& input_c, float* input, customAlgorithmType algo, bool& succes);
+  float* forwardPass(DeepNet::Network net, int& batchsize, int& input_h, int& input_w, int& input_c, float* input, 
+                    customAlgorithmType algo, std::vector<float>& time_conv, bool& succes);
 }
 #endif

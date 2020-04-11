@@ -129,19 +129,19 @@ class Conv2D {
    *  Input - Values/Inputs from the previous layer (in host memory)
    *  Output - Pointer to the result array (in host memory)
    */
-  float* ConvForward(float* input);
+  float* ConvForward(float* input, float &time_elapsed);
 
   /* Forward Pass Operation using CUDNN in-built function */
-  float* Conv_CUDNN(float* input);
+  float* Conv_CUDNN(float* input, float &time_elapsed);
   
   /* Forward Pass Operation using Direct Convolution Kernel */  
-  float* Conv_Direct(float* input);
+  float* Conv_Direct(float* input, float &time_elapsed);
  
   /* Forward Pass Operation using FFT Kernel */
-  float* Conv_FFT(float* input);
+  float* Conv_FFT(float* input, float &time_elapsed);
 
   /* Forward Pass Operation using WInograd Kernel */
-  float* Conv_Winograd(float* input);
+  float* Conv_Winograd(float* input, float &time_elapsed);
   
  private:
   /* Create Descriptors: 

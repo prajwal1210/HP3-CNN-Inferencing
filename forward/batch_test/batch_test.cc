@@ -2,6 +2,8 @@
 #include <fstream>
 #include <string>
 #include <sstream>
+#include <vector>
+
 
 #include "forward/cnn_forward.h"
 #include "forward/data_util.h"
@@ -44,7 +46,9 @@ int main(int argc, char **argv) {
   }
   
   bool succes = true;
-  float* output = CNN::forwardPass(net, batchsize, input_h, input_w, input_c, input, t, succes);
+  std::vector<float> time_conv;
+
+  float* output = CNN::forwardPass(net, batchsize, input_h, input_w, input_c, input, t, time_conv, succes);
 
   FILE* fp;
   fp = fopen("final_out.txt" , "w");
@@ -52,6 +56,13 @@ int main(int argc, char **argv) {
   for(int i = 0; i < batchsize * input_c * input_h * input_w; i++)
     fprintf(fp, "%f ",output[i]);
   fprintf(fp, "\n");
+
+  fclose(fp);
+
+  for(auto t : time_conv) {
+    std::cout << t << "ms, ";
+  }
+  std::cout << std::endl;
 
   google::protobuf::ShutdownProtobufLibrary();
   
