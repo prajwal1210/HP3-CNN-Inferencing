@@ -51,7 +51,7 @@ void direct_convolution(int input_channels, int input_height, int input_width, i
 
 /*forward pass function declared in direc_conv.hpp library*/
 float* Direct::passforward(int out_channels, int input_channels, int kernel_height, int kernel_width, int padding, int stride, 
-                          float* d_weights,int batchsize_of_data, int input_height, int input_width, float* d_input) {
+                          float* weights,int batchsize_of_data, int input_height, int input_width, float* input) {
   if(kernel_height > input_height || kernel_width > input_width){
     cout << "kernel size is too big " << endl;
     exit(EXIT_FAILURE);
@@ -65,13 +65,19 @@ float* Direct::passforward(int out_channels, int input_channels, int kernel_heig
   /* size of matrix with padding*/ 
   int size_input_matrix = batchsize_of_data * input_channels * (input_height+padding) * (input_width+padding) * sizeof(float);   // size of input matrix after padding
 
+  /* size of kernel matrix */ 
+  int size_kernel_matrix = out_channels * input_channels * kernel_height * kernel_width * sizeof(float);   // size of input matrix after padding
+
   /* calculating size of output matrix*/
   int H_out = (input_height - kernel_height + padding + stride)/stride;
   int W_out = (input_width - kernel_width + padding + stride)/stride;
   int size_output_matrix = batchsize_of_data * out_channels * H_out * W_out * sizeof(float);
   
-  /*allocating memory for input  matrix with padding*/
-  float *h_X = (float*)malloc(size_input_matrix);  
+  /* allocating memory for input  matrix with padding */
+  float *h_X = (float*)malloc(size_input_matrix); 
+  
+  /* allocating memory for output matrix */
+  float *h_Y = (float*)malloc(size_output_matrix);
  
   /* memory allocation check*/
   if (h_X == NULL) {
@@ -94,7 +100,7 @@ float* Direct::passforward(int out_channels, int input_channels, int kernel_heig
 
   for(int i = 0; i < batchsize_of_data; i++)
   {
-    cudaMemcpy(pad_input_in, &d_input[i * input_channels * input_height * input_width],
+    cudaMemcpy(pad_input_in, &input[i * input_channels * input_height * input_width],
               input_height * input_width * input_channels * sizeof(float) , cudaMemcpyHostToDevice);
     
     pad_input<<<grid1,threads1>>>(pad_input_in, pad_input_out, input_height, input_width, input_channels, padding/2);
@@ -127,7 +133,18 @@ float* Direct::passforward(int out_channels, int input_channels, int kernel_heig
   }
  
   /* Renaming the kernel weights pointer (input is in device memory) */
-  d_W = d_weights; 
+  err = cudaMalloc((void**)&d_W, size_kernel_matrix);
+  if (err != cudaSuccess) {
+    fprintf(stderr, "Failed to allocate device vector d_W(error code %s)!\n", cudaGetErrorString(err));
+    exit(EXIT_FAILURE);
+  }
+  
+  /* copying kernel to device */
+  err = cudaMemcpy(d_W , weights , size_kernel_matrix , cudaMemcpyHostToDevice);
+  if (err != cudaSuccess) {
+    fprintf(stderr, "Failed to copy vector weights from host to device (error code %s)!\n", cudaGetErrorString(err));
+    exit(EXIT_FAILURE);
+  }
 
   /*allocating memory for the output matrix*/
   err = cudaMalloc((void**)&d_Y, size_output_matrix);
@@ -156,6 +173,13 @@ float* Direct::passforward(int out_channels, int input_channels, int kernel_heig
     fprintf(stderr, "Failed to launch reduce1 kernel (error code %s)!\n", cudaGetErrorString(err));
     exit(EXIT_FAILURE);
   }
+
+  /* copying output matrix to host */
+  err = cudaMemcpy(h_Y, d_Y, size_output_matrix, cudaMemcpyDeviceToHost);
+  if (err != cudaSuccess) {
+    fprintf(stderr, "Failed to copy output vector from device to host (error code %s)!\n", cudaGetErrorString(err));
+    exit(EXIT_FAILURE);
+  }
  
   /* releasing all the device and host vectors */
   err = cudaFree(d_X);
@@ -163,10 +187,22 @@ float* Direct::passforward(int out_channels, int input_channels, int kernel_heig
     fprintf(stderr, "Failed to free device vector X (error code %s)!\n", cudaGetErrorString(err));
     exit(EXIT_FAILURE);
   }
+
+  err = cudaFree(d_Y);
+  if (err != cudaSuccess) {
+    fprintf(stderr, "Failed to free device vector Y (error code %s)!\n", cudaGetErrorString(err));
+    exit(EXIT_FAILURE);
+  }
+
+  err = cudaFree(d_W);
+  if (err != cudaSuccess) {
+    fprintf(stderr, "Failed to free device vector W (error code %s)!\n", cudaGetErrorString(err));
+    exit(EXIT_FAILURE);
+  }
  
   /*releasing the memory*/
   free(h_X);
 
   /*Return the CUDA Array*/
-  return d_Y;      
+  return h_Y;      
 }
