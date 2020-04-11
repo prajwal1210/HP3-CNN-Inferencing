@@ -86,7 +86,7 @@ void Conv2D::GetOutputDims(int* out_n, int* out_c, int* out_h, int* out_w) {
                                                   /*output width=*/out_w ));
 }
 
-/* (Conv2D)ConvForward Implementation : Uses CUDNN function call */
+/* (Conv2D)ConvForward Implementation : Wrapper that decides on what forward pass algorithm to use and calls the appropriate function */
 float* Conv2D::ConvForward(float* input) {
   float* output;
   switch(this->custom_algorithm) {
@@ -103,6 +103,7 @@ float* Conv2D::ConvForward(float* input) {
   return output;
 }
 
+/* (Conv2D)Conv_CUDNN Implementation : Forward pass using the CUDNN built-in functions */
 float* Conv2D::Conv_CUDNN(float* input) {
   std::cout << "USING CUDNNN CONVOLUTION" << std::endl;
   std::cout << "Workspace size: " << (this->workspace_bytes / 1048576.0) << "MB" << std::endl;
@@ -180,6 +181,7 @@ float* Conv2D::Conv_CUDNN(float* input) {
   return h_output;
 }
 
+/* (Conv2D)Conv_CUDNN Implementation : Forward pass using the Direct Convolution Kernel */
 float* Conv2D::Conv_Direct(float* input) {
   std::cout << "USING DIRECT CONVOLUTION" << std::endl;
   int image_in_bytes = this->batchsize * this->in_channels * this->input_height * this->input_width * sizeof(float);
@@ -234,6 +236,7 @@ float* Conv2D::Conv_Direct(float* input) {
   return h_output;
 }
 
+/* (Conv2D)Conv_CUDNN Implementation : Forward pass using FFT Kernel */
 float* Conv2D::Conv_FFT(float* input) {
   std::cout << "USING FFT CONVOLUTION" << std::endl;
   int image_in_bytes = this->batchsize * this->in_channels * this->input_height * this->input_width * sizeof(float);
@@ -329,10 +332,6 @@ void Conv2D::CreateDescriptors() {
                                                 CUDNN_CONVOLUTION_FWD_PREFER_FASTEST,
                                                 /*memoryLimitInBytes=*/0,
                                                 &(this->convolution_algorithm)));
-
-  if(this->input_height + 2*this->padding <= 256) {
-    this->convolution_algorithm = CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING;
-  }
   
   this->workspace_bytes = 0;
   checkCUDNN(cudnnGetConvolutionForwardWorkspaceSize(this->cudnn,
