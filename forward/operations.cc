@@ -190,20 +190,9 @@ float* Conv2D::Conv_Direct(float* input) {
   int image_in_bytes = this->batchsize * this->in_channels * this->input_height * this->input_width * sizeof(float);
   
   std::cout << "Input - ( " << this->batchsize << ", " << this->in_channels << ", " << this->input_height << ", " << this->input_width << " )" << std::endl;
-
-  float* d_input{nullptr};
-  cudaMalloc(&d_input, image_in_bytes);
-  cudaMemcpy(d_input, input, image_in_bytes, cudaMemcpyHostToDevice);
-
-  int kernel_size = this->out_channels * this->in_channels * this->h * this->w * sizeof(float);
-
-  float* d_kernel{nullptr};
-  cudaMalloc(&d_kernel, kernel_size);
-  cudaMemcpy(d_kernel, this->weights, kernel_size, cudaMemcpyHostToDevice);
-
-
-  float* d_output =  Direct::passforward(this->out_channels, this->in_channels, this->h, this->w, this->padding, this->stride, 
-                                    d_kernel, this->batchsize, this->input_height, this->input_width, d_input);
+  
+  float* h_output =  Direct::passforward(this->out_channels, this->in_channels, this->h, this->w, this->padding, this->stride, 
+                                    this->weights, this->batchsize, this->input_height, this->input_width, input);
   
   int out_n, out_c, out_h, out_w;
   this->GetOutputDims(&out_n, &out_c, &out_h, &out_w);
@@ -213,7 +202,11 @@ float* Conv2D::Conv_Direct(float* input) {
 
   const float alpha = 1, beta = 0;
   float* d_bias{nullptr};
+  float* d_output{nullptr};
   if (this->bias_present) {
+    cudaMalloc(&d_output, image_out_bytes);
+    cudaMemcpy(d_output, h_output, image_out_bytes, cudaMemcpyHostToDevice);
+
     int bias_size = this->out_channels * sizeof(float);
     cudaMalloc(&d_bias, bias_size);
     cudaMemcpy(d_bias, this->bias, bias_size, cudaMemcpyHostToDevice);
@@ -225,16 +218,15 @@ float* Conv2D::Conv_Direct(float* input) {
                               &alpha,
                               this->output_descriptor, 
                               d_output));
+    
+    cudaMemcpy(h_output, d_output, image_out_bytes, cudaMemcpyDeviceToHost);
   }
-
-  float* h_output = new float[image_out_bytes];
-  cudaMemcpy(h_output, d_output, image_out_bytes, cudaMemcpyDeviceToHost);
   
   /* Free the temporary memory */
-  cudaFree(d_input);
-  cudaFree(d_kernel);
-  cudaFree(d_output);
-  if (this->bias_present) cudaFree(d_bias);
+  if (this->bias_present) {
+    cudaFree(d_output);
+    cudaFree(d_bias);
+  }
 
   return h_output;
 }
