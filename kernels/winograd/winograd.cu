@@ -62,6 +62,7 @@ __global__ void precompute(int och, int ch, float* kernel_weights, float *U)
             }
         }
     }
+    free(temp);
 }
 __global__ void uv(int tch, int ch, float *devfin, float *U,  float *V)
 {
@@ -106,6 +107,7 @@ __global__ void amul(int tbs, int tp, int tq, int bs, int och, int p, int q, flo
             }
         }
     }
+    free(temp);
 }
 
 __global__ void paddev(float *devin, float *devinnopad, int h, int w, int pad)
@@ -201,6 +203,7 @@ __global__ void tile(int bs, int p, int q, int ch, float *devin, float *devout, 
     float *fin = (float *)malloc(och*4*4*sizeof(float));
     uv<<<1,och>>>(tch, ch, fin, devU, V); 
     cudaDeviceSynchronize();
+    free(V);
 
     for(int toch = 0; toch<och; toch++)
         for(int i = 0; i < 4; i++)
@@ -220,6 +223,7 @@ __global__ void tile(int bs, int p, int q, int ch, float *devin, float *devout, 
         }
         __syncthreads();
     }
+    free(fin);
     if(tch == 0) 
     {
         LOOP(och)
@@ -233,7 +237,7 @@ __global__ void tile(int bs, int p, int q, int ch, float *devin, float *devout, 
       cudaDeviceSynchronize();
   }
 }
-float * WING::forward(int och, int ch, int bs, int h, int w, int pad, float *&in, int &oph, int &opw, float *kwt)
+float * WING::forward(int och, int ch, int bs, int h, int w, int pad, float *in, int &oph, int &opw, float *kwt)
 {
     float *devin, *devinnopad, *cutY;
     int insize = bs * ch * h * w * sizeof(float);
@@ -274,14 +278,17 @@ float * WING::forward(int och, int ch, int bs, int h, int w, int pad, float *&in
     float *devfin;
     devout = devsum = nullptr;
  
-    int kwtsize = och*ch*3*3*sizeof(float);
-    int finsize = bs * p * q * ch * och * 4 * 4 * sizeof(float);
-    int outsize = bs * och * p * q * ch * 4 * 4 * sizeof(float);
-    int sumsize = bs * och * p * q * 4 * 4 * sizeof(float);
-    int ysize = bs * och * p * q * 2 * 2 * sizeof(float);
-    int usize = och*ch*4*4*sizeof(float);
-    int cutsize = bs*och*oph*opw*sizeof(float);
- 
+    size_t kwtsize = och*ch*3*3*sizeof(float);
+    size_t finsize = bs * p * q * ch * och * 4 * 4 * sizeof(float);
+    size_t outsize = bs * och * p * q * ch * 4 * 4 * sizeof(float);
+    size_t sumsize = bs * och * p * q * 4 * 4 * sizeof(float);
+    size_t ysize = bs * och * p * q * 2 * 2 * sizeof(float);
+    size_t usize = och*ch*4*4*sizeof(float);
+    size_t cutsize = bs*och*oph*opw*sizeof(float);
+    
+    size_t total = outsize + sumsize + kwtsize + usize + finsize + ysize + cutsize;
+    printf("Total - %ff\n",(total/1048576.0));
+
     gpu_error(cudaMalloc((void **) & devout, outsize));
     gpu_error(cudaMalloc((void **) & devsum, sumsize));
     gpu_error(cudaMalloc((void **) & devkwt, kwtsize));
@@ -304,7 +311,7 @@ float * WING::forward(int och, int ch, int bs, int h, int w, int pad, float *&in
 
     cutpad<<<cutgrid, cutblock>>> (devY, devcutY, oph, opw);   
     // copy from device to host.
-    delete in;
+    // delete in;
     cutY = (float *)malloc(cutsize);
 
     cudaSafeCall(cudaMemcpy(cutY, devcutY, cutsize, cudaMemcpyDeviceToHost));
