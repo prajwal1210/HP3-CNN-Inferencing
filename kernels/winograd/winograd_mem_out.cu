@@ -236,60 +236,29 @@ __global__ void tile(int bs, int p, int q, int ch, float *devin, float *devout, 
       //cudaDeviceSynchronize();
   }
 }
-void tilehost(int och, int ch, int bs, int h, int w, int pad, float *devin, int oph, int opw, 
-    float *devU, float *cutY)
+void tilehost(int p, int q, int och, int ch, int bs, int h, int w, int pad, float *devin, int oph, int opw, 
+    float *devU, float *cutY, float *devout, float *devsum, float *devfin, float *devY, float *devcutY)
 {
-    
-    int p = max((h-2)/2, 0);
-    int q = max((w-2)/2, 0);
-    
-    float *devout, *devsum, *devY, *devcutY;
-    float *devfin;
-    //devout = devsum = nullptr;
- 
-
-    size_t finsize = bs * p * q * ch * och * 4 * 4 * sizeof(float);
-    size_t outsize = bs * och * p * q * ch * 4 * 4 * sizeof(float);
-    size_t sumsize = bs * och * p * q * 4 * 4 * sizeof(float);
-    size_t ysize = bs * och * p * q * 2 * 2 * sizeof(float);
-
- 
-    gpu_error(cudaMalloc((void **) & devout, outsize));
-    gpu_error(cudaMalloc((void **) & devsum, sumsize));
-
-    gpu_error(cudaMalloc((void **) & devfin, finsize));
-    gpu_error(cudaMalloc((void **) & devY, ysize));
-
-    // call the kernel function for precomputing
-    
-    
+        
     dim3 grid(bs, p, q);  // 3-D
     dim3 block(ch, 1, 1); // 1-D
     // call the kernel function for tiling
     tile<<<grid, block>>>(bs, p, q, ch, devin, devout, devsum, devY, devU, h, w, och, devfin);
-    cudaSafeCall(cudaGetLastError());
+    //cudaSafeCall(cudaGetLastError());
 
-    gpu_error(cudaFree(devout));
-    gpu_error(cudaFree(devsum));
     
-
-    gpu_error(cudaFree(devfin));
-
+    size_t cutsize = bs*och*oph*opw*sizeof(float);
     dim3 cutgrid(bs*och, p, q);
     dim3 cutblock(1,1,1);
     
-    size_t cutsize = bs*och*oph*opw*sizeof(float);
-    
-    gpu_error(cudaMalloc((void **) & devcutY, cutsize));
     cutpad<<<cutgrid, cutblock>>> (devY, devcutY, oph, opw);   
-    gpu_error(cudaFree(devY));
+    
     // copy from device to host.
     //delete in;
     // cutY = (float *)malloc(cutsize);
 
     cudaSafeCall(cudaMemcpy(cutY, devcutY, cutsize, cudaMemcpyDeviceToHost));
     
-    gpu_error(cudaFree(devcutY));
 
     // return cutY;
 }
@@ -335,6 +304,8 @@ float * WING::forward(int och, int ch, int bs, int h, int w, int pad, float *in,
     gpu_error(cudaFree(devinnopad));
     h = newh;
     w = neww;
+    int p = max((h-2)/2, 0);
+    int q = max((w-2)/2, 0);
 
     size_t kwtsize = och*ch*3*3*sizeof(float);    
     size_t usize = och*ch*4*4*sizeof(float);
@@ -351,18 +322,44 @@ float * WING::forward(int och, int ch, int bs, int h, int w, int pad, float *in,
     size_t cuttempsize = bs*oph*opw*sizeof(float);
     size_t cutsize = bs*och*oph*opw*sizeof(float);
     cutY = (float *)malloc(cutsize);
-    float *cuttempY = (float *)malloc(cuttempsize);;
+    float *cuttempY = (float *)malloc(cuttempsize);
+
+    float *devout, *devsum, *devY, *devcutY;
+    float *devfin;
+    //devout = devsum = nullptr;
+ 
+
+    size_t finsize = bs * p * q * ch * 4 * 4 * sizeof(float);
+    size_t outsize = bs * p * q * ch * 4 * 4 * sizeof(float);
+    size_t sumsize = bs * p * q * 4 * 4 * sizeof(float);
+    size_t ysize = bs * p * q * 2 * 2 * sizeof(float);
+
+ 
+    gpu_error(cudaMalloc((void **) & devout, outsize));
+    gpu_error(cudaMalloc((void **) & devsum, sumsize));
+
+    gpu_error(cudaMalloc((void **) & devfin, finsize));
+    gpu_error(cudaMalloc((void **) & devY, ysize));
+    
+    gpu_error(cudaMalloc((void **) & devcutY, cuttempsize));
+
     LOOP(och)
     {
         ucopy<<<1,ch>>>(devtempU, devU, toch, n1, n2, ch);     
-        tilehost(1,ch,bs,h,w,pad,devin,oph,opw,devtempU,cuttempY);
+        tilehost(p,q,1,ch,bs,h,w,pad,devin,oph,opw,devtempU,cuttempY,devout, devsum, devfin, devY,devcutY);
         LOOP(bs)
             LOOP(oph)
                 LOOP(opw)
                     cutY[((((tbs*och+toch)*oph+toph)*opw)+topw)] = cuttempY[(((tbs*oph)+toph)*opw+topw)];
     }
+    
     free(cuttempY);
 
+    gpu_error(cudaFree(devcutY));
+    gpu_error(cudaFree(devY));
+    gpu_error(cudaFree(devout));
+    gpu_error(cudaFree(devsum));
+    gpu_error(cudaFree(devfin));
     gpu_error(cudaFree(devtempU));    
     gpu_error(cudaFree(devin));    
     gpu_error(cudaFree(devU));

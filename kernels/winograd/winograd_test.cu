@@ -34,11 +34,10 @@ int main(void)
     {
         tkw[ttsize] = 0;
     }
-    tkw[0] = tkw[8] = 1;
-    tkw[9] = tkw[17] = 1;
-    tkw[18] = tkw[26] = 1;
-    tkw[27] = tkw[35] = 1;
-    //put input
+   tkw[0] = tkw[8] = 1;
+    tkw[9] = tkw[17] = 2;
+    tkw[18] = tkw[26] = 3;
+    tkw[27] = tkw[35] = 4;
     LOOP(bs)
     {
         LOOP(ch)
