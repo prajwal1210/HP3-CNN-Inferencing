@@ -8,9 +8,17 @@
 
 int main(int argc, char **argv) {
   
-  if(argc != 2) {
+  if(argc < 2) {
     std::cerr << "Please provide path to the model to load relative to the executable directory" << std::endl;
     exit(1);  
+  }
+
+  customAlgorithmType t = t_CUDNN;
+  if(argc == 3) {
+    std::string algo(argv[2]);
+    if(algo == "FFT") {
+      t = t_CUSTOM_FFT;
+    }
   }
 
   DeepNet::Network net;
@@ -30,7 +38,7 @@ int main(int argc, char **argv) {
   }
   
   bool succes = true;
-  float* output = CNN::forwardPass(net, batchsize, input_h, input_w, input_c, input, succes);
+  float* output = CNN::forwardPass(net, batchsize, input_h, input_w, input_c, input, t, succes);
 
   FILE* fp;
   fp = fopen("final_out.txt" , "w");

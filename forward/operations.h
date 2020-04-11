@@ -17,8 +17,9 @@
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 #include <cublas_v2.h>
-#include "kernels/Direct/direct_conv.h"
 
+#include "kernels/Direct/direct_conv.h"
+#include "kernels/FFT/fftheader.h"
 
 /* Macro to check CUDNN error and print the error message */
 #define checkCUDNN(expression) {                             \
@@ -40,6 +41,13 @@
     }                                                        \
 }
 
+typedef enum{
+  t_CUDNN = 0,
+  t_CUSTOM_DIRECT,
+  t_CUSTOM_FFT,
+  t_CUSTOM_IM2COL,
+  t_CUSTOM_WINOGRAD
+} customAlgorithmType; 
 
 /* Class for Convolution Operation :
  *  Supports Forward Pass with and without Bias
@@ -59,7 +67,9 @@ class Conv2D {
   int dilation;           /* Assumed same in x and y direction */
   float* weights;        
   bool bias_present;      
-  float* bias;            
+  float* bias;
+
+  customAlgorithmType custom_algorithm;
 
   cudnnTensorFormat_t data_format = CUDNN_TENSOR_NCHW;
   cudnnTensorFormat_t param_format = CUDNN_TENSOR_NCHW;
@@ -82,6 +92,10 @@ class Conv2D {
    */
   Conv2D(int out_channels, int in_channels, int h, int w, int batchsize, int padding, int stride, int dilation, 
         int input_height, int input_width, cudnnHandle_t cudnn);
+  
+  Conv2D(int out_channels, int in_channels, int h, int w, int batchsize, int padding, int stride, int dilation, 
+        int input_height, int input_width, customAlgorithmType algo, cudnnHandle_t cudnn);
+
   
   /* Destructor */
   ~Conv2D();
@@ -112,8 +126,12 @@ class Conv2D {
    */
   float* ConvForward(float* input);
 
+  float* Conv_CUDNN(float* input);
+  
   float* Conv_Direct(float* input);
-
+ 
+  float* Conv_FFT(float* input);
+  
  private:
   /* Create Descriptors: 
    *  Creates the necessary descriptors based on the data members (helper to the constructor)
