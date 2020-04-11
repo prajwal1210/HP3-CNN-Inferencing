@@ -15,7 +15,7 @@ int main(void)
     ch = 2;
     h = 5;
     w = 5;
-    och = 1;
+    och = 2;
     pad = 0;
     size_t insize = bs * ch * h * w * sizeof(float);
     float *in = new float[insize/sizeof(float)];
@@ -30,7 +30,9 @@ int main(void)
         tkw[ttsize] = 0;
     }
     tkw[0] = tkw[8] = 1;
-    tkw[9] = tkw[17] = 2;
+    tkw[9] = tkw[17] = 1;
+    tkw[18] = tkw[26] = 1;
+    tkw[27] = tkw[35] = 1;
     //put input
     LOOP(bs)
     {
