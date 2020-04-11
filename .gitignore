@@ -21,3 +21,5 @@
 
 ## Images ##
 **/*.jpg
+## Data ##
+forward/data/MiniImageNet/
