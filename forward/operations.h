@@ -20,6 +20,7 @@
 
 #include "kernels/Direct/direct_conv.h"
 #include "kernels/FFT/fftheader.h"
+#include "kernels/winograd/wingheader.h"
 
 /* Macro to check CUDNN error and print the error message */
 #define checkCUDNN(expression) {                             \
@@ -138,6 +139,9 @@ class Conv2D {
  
   /* Forward Pass Operation using FFT Kernel */
   float* Conv_FFT(float* input);
+
+  /* Forward Pass Operation using WInograd Kernel */
+  float* Conv_Winograd(float* input);
   
  private:
   /* Create Descriptors: 

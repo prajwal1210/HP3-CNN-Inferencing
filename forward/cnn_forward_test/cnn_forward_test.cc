@@ -22,6 +22,9 @@ int main(int argc, char **argv) {
     else if(algo == "FFT") {
       t = t_CUSTOM_FFT;
     }
+    else if(algo == "WINOGRAD") {
+      t = t_CUSTOM_WINOGRAD;
+    }
   }
 
   DeepNet::Network net;
@@ -37,7 +40,7 @@ int main(int argc, char **argv) {
   bool succes = true;
 
   float* output = CNN::forwardPass(net, batchsize, input_h, input_w, input_c, input, t, succes);
-
+  
   FILE* fp;
   fp = fopen("final_out.txt" , "w");
 

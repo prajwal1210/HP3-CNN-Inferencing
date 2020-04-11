@@ -58,7 +58,7 @@ float* CNN::forwardPass(DeepNet::Network net, int& batchsize, int& input_h, int&
           std::cout << "(" << batchsize << ", " << input_c << ", " << input_h << ", " << input_w << ")" << std::endl;
           prev_output = output;
           output = conv->ConvForward(output);
-          free(prev_output);
+          delete [] prev_output;
           break;
         }
       case DeepNet::Layer::POOL:
@@ -77,7 +77,7 @@ float* CNN::forwardPass(DeepNet::Network net, int& batchsize, int& input_h, int&
           std::cout << "(" << batchsize << ", " << input_c << ", " << input_h << ", " << input_w << ")" << std::endl;
           prev_output = output;
           output = pool->PoolForward(output);
-          free(prev_output);
+          delete [] prev_output;
           break; 
         }
       case DeepNet::Layer::ADAPTIVE_POOL:
@@ -96,7 +96,7 @@ float* CNN::forwardPass(DeepNet::Network net, int& batchsize, int& input_h, int&
           std::cout << "(" << batchsize << ", " << input_c << ", " << input_h << ", " << input_w << ")" << std::endl;
           prev_output = output;
           output = pool->PoolForward(output);
-          free(prev_output);
+          delete [] prev_output;
           break; 
         }
       case DeepNet::Layer::ACTIVATION:
@@ -113,7 +113,7 @@ float* CNN::forwardPass(DeepNet::Network net, int& batchsize, int& input_h, int&
           std::cout << "(" << batchsize << ", " << input_c << ", " << input_h << ", " << input_w << ")" << std::endl;
           prev_output = output;
           output = act->ActivationForward(output);
-          free(prev_output);
+          delete [] prev_output;
           break;
         }
       case DeepNet::Layer::LINEAR:
@@ -129,7 +129,7 @@ float* CNN::forwardPass(DeepNet::Network net, int& batchsize, int& input_h, int&
           std::cout << "(" << batchsize << ", " << input_c << ", " << input_h << ", " << input_w << ")" << std::endl;
           prev_output = output;
           output = lin->LinearForward(output);
-          free(prev_output);
+          delete [] prev_output;
           break;
         }
       default:
