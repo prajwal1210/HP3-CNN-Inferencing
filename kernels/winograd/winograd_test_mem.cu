@@ -11,12 +11,12 @@ int main(void)
     int bs, ch, h, w, och, pad; 
     //bs - batch size, ch - input channel, h - input height, w - input weight , pad - padding required
     
-    // bs = 1;
-    // ch = 64;
-    // h = 32;
-    // w = 32;
-    // och = 10;
-    // pad = 0;
+    bs = 1;
+    ch = 64;
+    h = 256;
+    w = 256;
+    och = 64;
+    pad = 0;
     bs = 2;
     ch = 2;
     h = 5;
@@ -36,9 +36,9 @@ int main(void)
         tkw[ttsize] = 0;
     }
     tkw[0] = tkw[8] = 1;
-    tkw[9] = tkw[17] = 1;
-    tkw[18] = tkw[26] = 1;
-    tkw[27] = tkw[35] = 1;
+    tkw[9] = tkw[17] = 2;
+    tkw[18] = tkw[26] = 3;
+    tkw[27] = tkw[35] = 4;
     //put input
     LOOP(bs)
     {
@@ -53,25 +53,25 @@ int main(void)
             }
         }
     }
-    LOOP(bs)
-    {
-        cout<<"{ ";
-        LOOP(ch)
-        {
-            cout<<"{ ";
-            LOOP(h)
-            {
-                cout<<"{ ";
-                LOOP(w)
-                {
-                    cout<<in[((tbs*ch+tch)*h+th)*w+tw]<<" ";
-                }
-                cout<<"}\n";
-            }
-            cout<<"}\n";
-        }
-        cout<<"}\n";
-    }
+    // LOOP(bs)
+    // {
+    //     cout<<"{ ";
+    //     LOOP(ch)
+    //     {
+    //         cout<<"{ ";
+    //         LOOP(h)
+    //         {
+    //             cout<<"{ ";
+    //             LOOP(w)
+    //             {
+    //                 cout<<in[((tbs*ch+tch)*h+th)*w+tw]<<" ";
+    //             }
+    //             cout<<"}\n";
+    //         }
+    //         cout<<"}\n";
+    //     }
+    //     cout<<"}\n";
+    // }
     cout<<"\nConvolving\n";
     
     int oph, opw; //output height, output weight
