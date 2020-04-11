@@ -17,12 +17,12 @@ int main(void)
     w = 5;
     och = 1;
     pad = 0;
-    int insize = bs * ch * h * w * sizeof(float);
+    size_t insize = bs * ch * h * w * sizeof(float);
     float *in = new float[insize/sizeof(float)];
     float *t = in;
     float  *cutY; //final convolved output
-    float *kernel_weights = new float[och*3*3*ch];
-    int tsize = och*ch*3*3;
+    size_t tsize = och*ch*3*3;
+    float *kernel_weights = new float[tsize];
     float *tkw = kernel_weights;
     //put kernel weights
     LOOP(tsize)
@@ -45,25 +45,25 @@ int main(void)
             }
         }
     }
-    // LOOP(bs)
-    // {
-    //     cout<<"{ ";
-    //     LOOP(ch)
-    //     {
-    //         cout<<"{ ";
-    //         LOOP(h)
-    //         {
-    //             cout<<"{ ";
-    //             LOOP(w)
-    //             {
-    //                 cout<<in[((tbs*ch+tch)*h+th)*w+tw]<<" ";
-    //             }
-    //             cout<<"}\n";
-    //         }
-    //         cout<<"}\n";
-    //     }
-    //     cout<<"}\n";
-    // }
+    LOOP(bs)
+    {
+        cout<<"{ ";
+        LOOP(ch)
+        {
+            cout<<"{ ";
+            LOOP(h)
+            {
+                cout<<"{ ";
+                LOOP(w)
+                {
+                    cout<<in[((tbs*ch+tch)*h+th)*w+tw]<<" ";
+                }
+                cout<<"}\n";
+            }
+            cout<<"}\n";
+        }
+        cout<<"}\n";
+    }
     cout<<"\nConvolving\n";
     
     int oph, opw; //output height, output weight
