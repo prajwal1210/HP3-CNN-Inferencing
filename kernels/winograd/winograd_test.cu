@@ -10,7 +10,12 @@ int main(void)
     auto rng = uniform_real_distribution<float>();
     int bs, ch, h, w, och, pad; 
     //bs - batch size, ch - input channel, h - input height, w - input weight , pad - padding required
-    
+    // bs = 1;
+    // ch = 64;
+    // h = 32;
+    // w = 32;
+    // och = 10;
+    // pad = 0;
     bs = 2;
     ch = 2;
     h = 5;
