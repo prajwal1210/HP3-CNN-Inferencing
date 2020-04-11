@@ -40,15 +40,15 @@ int main(int argc, char **argv) {
   bool succes = true;
 
   float* output = CNN::forwardPass(net, batchsize, input_h, input_w, input_c, input, t, succes);
-  std::cout << "Here" << endl;
-  // FILE* fp;
-  // fp = fopen("final_out.txt" , "w");
+  
+  FILE* fp;
+  fp = fopen("final_out.txt" , "w");
 
-  // for(int i = 0; i < batchsize * input_c * input_h * input_w; i++)
-  //   fprintf(fp, "%f ",output[i]);
-  // fprintf(fp, "\n");
+  for(int i = 0; i < batchsize * input_c * input_h * input_w; i++)
+    fprintf(fp, "%f ",output[i]);
+  fprintf(fp, "\n");
 
-  // fclose(fp);
+  fclose(fp);
 
   google::protobuf::ShutdownProtobufLibrary();
   
