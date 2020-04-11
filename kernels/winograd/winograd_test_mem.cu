@@ -1,4 +1,4 @@
-#include "winograd.cu"
+#include "winograd_mem.cu"
 
 #include<random>
 #define LOOP(x) for(int t##x = 0; t##x < x; t##x++)

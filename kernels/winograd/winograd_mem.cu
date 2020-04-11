@@ -236,7 +236,7 @@ __global__ void tile(int bs, int p, int q, int ch, float *devin, float *devout, 
       cudaDeviceSynchronize();
   }
 }
-float * WING::forward(int och, int ch, int bs, int h, int w, int pad, float *in, int &oph, int &opw, float *kwt)
+float * tilehost(int och, int ch, int bs, int h, int w, int pad, float *in, int &oph, int &opw, float *kwt)
 {
     float *devin, *devinnopad, *cutY;
     int insize = bs * ch * h * w * sizeof(float);
@@ -292,7 +292,6 @@ float * WING::forward(int och, int ch, int bs, int h, int w, int pad, float *in,
     gpu_error(cudaMalloc((void **) & devfin, finsize));
     gpu_error(cudaMalloc((void **) & devY, ysize));
     gpu_error(cudaMemcpy(devkwt, kwt, kwtsize, cudaMemcpyHostToDevice));
-    gpu_error(cudaMalloc((void **) & devcutY, cutsize));
     // call the kernel function for precomputing
     precompute<<<och, ch>>>(och, ch, devkwt, devU);
     gpu_error(cudaFree(devkwt));
@@ -312,7 +311,8 @@ float * WING::forward(int och, int ch, int bs, int h, int w, int pad, float *in,
 
     dim3 cutgrid(bs*och, p, q);
     dim3 cutblock(1,1,1);
-
+    
+    gpu_error(cudaMalloc((void **) & devcutY, cutsize));
     cutpad<<<cutgrid, cutblock>>> (devY, devcutY, oph, opw);   
     gpu_error(cudaFree(devY));
     // copy from device to host.
@@ -320,10 +320,37 @@ float * WING::forward(int och, int ch, int bs, int h, int w, int pad, float *in,
     cutY = (float *)malloc(cutsize);
 
     cudaSafeCall(cudaMemcpy(cutY, devcutY, cutsize, cudaMemcpyDeviceToHost));
-
-    
     
     gpu_error(cudaFree(devcutY));
 
     return cutY;
+}
+
+float * WING::forward(int och, int ch, int bs, int h, int w, int pad, float *in, int &oph, int &opw, float *kwt)
+{
+    float *kwt_new = (float *)malloc(ch*3*3*sizeof(float));
+    int newh, neww;
+    int n1 = 3, n2 = 3;
+    newh = h + 2*pad;
+    neww = w + 2*pad;
+    oph = newh-2;
+    opw = neww-2;
+    size_t cutsize = bs*och*oph*opw*sizeof(float);
+    float *cutY = (float *)malloc(cutsize);
+    float *cuttempY;
+    LOOP(och)
+    {
+        LOOP(ch)
+            LOOP(n1)
+                LOOP(n2)
+                    kwt_new[((tch*n1+tn1)*n2+tn2)] = kwt[(((toch*ch+tch)*n1+tn1)*n2+tn2)];
+        cuttempY = tilehost(1,ch,bs,h,w,pad,in,oph,opw,kwt_new);
+        LOOP(bs)
+            LOOP(oph)
+                LOOP(opw)
+                    cutY[((((tbs*och+toch)*oph+toph)*opw)+topw)] = cuttempY[(((tbs*oph)+toph)*opw+topw)];
+        free(cuttempY);
+    }
+    return cutY;
+
 }
