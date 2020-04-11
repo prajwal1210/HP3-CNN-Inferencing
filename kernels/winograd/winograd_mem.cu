@@ -64,14 +64,14 @@ __global__ void precompute(int och, int ch, float* kernel_weights, float *U)
     }
     free(temp);
 }
-__global__ void uv(int tch, int ch, float *devfin, float *U,  float *V)
+__device__ void uv(int tch, int ch, float *devfin, float *U,  float *V)
 {
-    int x = threadIdx.x;
+    int x = 0;//threadIdx.x;
     for(int i = 0; i <4; ++i)
         for(int j = 0; j <4; ++j)
             devfin[x*4*4 + i*4 + j] = U[((x*ch+tch)*4+i)*4+j]*V[i*4+j];            
 }
-__global__ void amul(int tbs, int tp, int tq, int bs, int och, int p, int q, float *devsum, float *devY)
+__device__ void amul(int tbs, int tp, int tq, int bs, int och, int p, int q, float *devsum, float *devY)
 {
     float A_t[2][4] = {
         {1, 1, 1, 0},
@@ -83,7 +83,7 @@ __global__ void amul(int tbs, int tp, int tq, int bs, int och, int p, int q, flo
         {1,-1},
         {0,-1}
     };
-    int x = threadIdx.x;
+    int x = 0; //threadIdx.x;
     float *temp = (float *)malloc(2*4*sizeof(float));
     for(int i = 0; i <2; ++i)
     {
@@ -201,8 +201,8 @@ __global__ void tile(int bs, int p, int q, int ch, float *devin, float *devout, 
         }
     }
     float *fin = (float *)malloc(och*4*4*sizeof(float));
-    uv<<<1,och>>>(tch, ch, fin, devU, V); 
-    cudaDeviceSynchronize();
+    uv(tch, ch, fin, devU, V); 
+    //cudaDeviceSynchronize();
     free(V);
 
     for(int toch = 0; toch<och; toch++)
@@ -232,8 +232,8 @@ __global__ void tile(int bs, int p, int q, int ch, float *devin, float *devout, 
     }
   if(tch == 0)
   {
-      amul<<<1,och>>>(tbs, tp, tq, bs, och, p, q, devsum, devY);
-      cudaDeviceSynchronize();
+      amul(tbs, tp, tq, bs, och, p, q, devsum, devY);
+      //cudaDeviceSynchronize();
   }
 }
 float * tilehost(int och, int ch, int bs, int h, int w, int pad, float *in, int &oph, int &opw, float *kwt)
