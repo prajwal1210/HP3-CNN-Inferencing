@@ -20,7 +20,11 @@ clean:
 run_cudnn:
 	./test
 	python operations_test.py
-	
+
+run_direct:
+	./test "DIRECT"
+	python operations_test.py 
+
 run_fft:
-	./test
-	python operations_test.py "FFT"
+	./test "FFT"
+	python operations_test.py

@@ -28,6 +28,14 @@ run_cudnn:
 	./test "$(PROJECT_DIR)/pretrained-models/alexnet.pb" 1>/dev/null
 	python batch_test.py alex 
 
+run_direct:
+	./test "$(PROJECT_DIR)/pretrained-models/vgg19.pb" "DIRECT" 1>/dev/null
+	python batch_test.py vgg
+	@echo ""
+	./test "$(PROJECT_DIR)/pretrained-models/alexnet.pb" "DIRECT" 1>/dev/null
+	python batch_test.py alex 
+
+
 run_fft:
 	./test "$(PROJECT_DIR)/pretrained-models/vgg19.pb" "FFT" 1>/dev/null
 	python batch_test.py vgg
