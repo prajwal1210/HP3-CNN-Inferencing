@@ -2,6 +2,7 @@
 #include <fstream>
 #include <string>
 #include <sstream>
+#include <vector>
 
 #include "forward/cnn_forward.h"
 #include "forward/data_util.h"
@@ -38,8 +39,9 @@ int main(int argc, char **argv) {
   const char* image_path = image_path_s.c_str();
   float* input = sloader.loadSingleColoredImageCHW(image_path, batchsize, input_c, input_h, input_w);
   bool succes = true;
+  std::vector<float> time_conv;
 
-  float* output = CNN::forwardPass(net, batchsize, input_h, input_w, input_c, input, t, succes);
+  float* output = CNN::forwardPass(net, batchsize, input_h, input_w, input_c, input, t, time_conv, succes);
   
   FILE* fp;
   fp = fopen("final_out.txt" , "w");
@@ -49,6 +51,11 @@ int main(int argc, char **argv) {
   fprintf(fp, "\n");
 
   fclose(fp);
+
+  for(auto t : time_conv) {
+    std::cout << t << "ms, ";
+  }
+  std::cout << std::endl;
 
   google::protobuf::ShutdownProtobufLibrary();
   

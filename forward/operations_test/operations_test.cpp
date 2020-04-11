@@ -127,8 +127,9 @@ float* Conv2D_func(cudnnHandle_t cudnn, float* input, int in_h, int in_w, int& o
 
 	Conv2D conv1(3, 3, 3, 3, 1, 1, 1, 1, in_h, in_w, t, cudnn);
 	conv1.SetWeights(&(h_kernel[0][0][0][0]));
+  float t_conv;
 
-	float* h_output = conv1.ConvForward(input);
+	float* h_output = conv1.ConvForward(input, t_conv);
 
 	int out_n, c, h, w;
 	conv1.GetOutputDims(&out_n, &c, &h, &w);
