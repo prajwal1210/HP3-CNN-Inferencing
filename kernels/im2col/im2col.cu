@@ -71,8 +71,8 @@ void im2col_gpu(const Dtype* data_im, const int channels,
 	int width_col = (width + 2 * pad - ksize) / stride + 1;
 	int num_kernels = channels * height_col * width_col;
 	// NOLINT_NEXT_LINE(whitespace/operators)
-	im2col_gpu_kernel<Dtype><<<CAFFE_GET_BLOCKS(num_kernels),
-		CAFFE_CUDA_NUM_THREADS>>>(
+	im2col_gpu_kernel<Dtype><<<GET_BLOCKS(num_kernels),
+		CUDA_NUM_THREADS>>>(
 		num_kernels, data_im, height, width, ksize, pad, stride, height_col,
 		width_col, data_col);
 	CUDA_POST_KERNEL_CHECK;
@@ -89,15 +89,11 @@ template void im2col_gpu<double>(const double* data_im, const int channels,
 
 
 cudaError_t im2colWithCuda(
-	const float* data_im,
-	const int batch_size,
-	const int channels,
-	const int height, const int width, const int ksize, const int pad,
-	const int stride,
-	float* data_col,
-	const int num_kernels,
-	float* data_kernel,
-	float* data_ret)
+	const float* data_im, float* data_kernel, float* data_col, float* data_ret
+	const int batch_size, const int channels, const int height, const int width,
+	const int kheight, const int kwidth, const int num_kernels,
+	const int pad, const int stride
+	)
 {
 	float *dev_image = 0;
 	float *dev_col = 0;
@@ -120,31 +116,31 @@ cudaError_t im2colWithCuda(
 
 	sdkCreateTimer(&timer);
 
-	int height_col = (height + 2 * pad - ksize) / stride + 1;
+	int height_col = (height + 2 * pad - kheight) / stride + 1;
 	int width_col = (width + 2 * pad - ksize) / stride + 1;
 		
-	int K = ksize*ksize*channels;
+	int K = kheight * kwidth * channels;
 	int M = num_kernels;
-	int N = height_col*width_col;
+	int N = height_col * width_col;
 
 	int image_size = height * width * channels;
 	int images_size = image_size * batch_size;
 
 	int kernels_size = M * K;
-	int col_size = N*K;
+	int col_size = N * K;
 	int result_size = M * N * batch_size;
 
-
-	// col 
-	checkCudaErrors(cudaMalloc((void**)&dev_col, N * K *batch_size * sizeof(float)));
 	
 	// image
-	checkCudaErrors(cudaMalloc((void**)&dev_image, images_size* sizeof(float)));
+	checkCudaErrors(cudaMalloc((void**)&dev_image, images_size * sizeof(float)));
 	checkCudaErrors(cudaMemcpy(dev_image, data_im, images_size * sizeof(float), cudaMemcpyHostToDevice));
 	
 	// kernel
 	checkCudaErrors(cudaMalloc((void**)&dev_kernel, kernels_size * sizeof(float)));
 	checkCudaErrors(cudaMemcpy(dev_kernel, data_kernel, kernels_size * sizeof(float), cudaMemcpyHostToDevice));
+
+	// col 
+	checkCudaErrors(cudaMalloc((void**)&dev_col, col_size * batch_size * sizeof(float)));
 
 	// result
 	checkCudaErrors(cudaMalloc((void**)&dev_ret, result_size * sizeof(float)));
