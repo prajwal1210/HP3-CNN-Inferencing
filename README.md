@@ -12,7 +12,58 @@ Here :
 * Complete all basic kernel implementations **(Rough deadline : Saturday - 4th April)**
 * Test all the kernels individually **(Rough deadline: Sunday - 5th April)**
 * Improve upon the Kernels if required (ex, Winograd for more than 3/5 filter size) 
-* Forward pass using the saved specification and the implemented library - Includes loading data as well (will take time) **(Deadline: Sunday - 5th April)**
 * Integrating Kernels with the Forward Pass and Testing **(Hard Deadline: Wednesday - 8th April)**
 * Adding Profilining, Plotting and Analysis for both VGG and AlexNet **(Hard Deadline: Saturday - 11th April)**
 * Presentation and Documentation **(Hard Deadline: Monday - 13th April )**
+
+## Testing your kernel outputs
+
+Use the sample image - `./forward/data/n02118333_27_fox.jpg`
+
+The test file - `./forward/operations_test/operations_test.cpp` has functions to load, save image (using OpenCV) and to create the specific kernel weights required for this test under Conv2D_func as :
+
+	const float kernel_template[3][3] = {
+	{1, 1, 1},
+	{1, -8, 1},
+	{1, 1, 1}};
+
+	  
+
+	float h_kernel[3][3][3][3];
+	for (int kernel = 0; kernel < 3; ++kernel) {
+	 for (int channel = 0; channel < 3; ++channel) {
+	  for (int row = 0; row < 3; ++row) {
+	   for (int column = 0; column < 3; ++column) {
+		h_kernel[kernel][channel][row][column] = kernel_template[row][column];
+	}
+	  }
+	 }
+	}
+
+The expected output for this image, using those load functions and that kernel is given as the file - `./forward/data/sample_convout_fox.png`
+
+The output of your kernel match this sample output and pass this test
+
+## Compile Instructions
+
+### Tests
+All tests are located in folders with _test at the end and are run using:
+* Compile - `make`
+* Run the test - `make run` 
+* Clean the test directory - `make clean`
+* Requirements - OpenCV, Pytorch10.1
+
+#### CNN Forward Test 
+Located under forward/cnn_forward_test:
+* Tests the CNN Forward library by running both VGG19 and Alexnet on a single image and comparing the results with Pytorch Output
+
+#### Batch Test 
+Located under forward/batch_test:
+* Tests the CNN Forward library for a batch of 8 images by running both VGG19 and Alexnet and comparing the results with Pytorch Output
+
+#### Operations Test 
+Located under forward/opearations_test:
+* Tests the individual component operations in the operations.h library and compares the results with Pytorch Output
+
+## Using MiniImageNet Data
+We have created a custom dataset from ImageNet with 372 images and resized them to 256X256. To use the dataset and run the above tests, make sure you extract the zip - MiniImageNet.zip present in forward/data folder first 

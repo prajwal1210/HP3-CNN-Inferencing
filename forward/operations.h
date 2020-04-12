@@ -18,6 +18,9 @@
 #include <device_launch_parameters.h>
 #include <cublas_v2.h>
 
+#include "kernels/Direct/direct_conv.h"
+#include "kernels/FFT/fftheader.h"
+#include "kernels/winograd/wingheader.h"
 
 /* Macro to check CUDNN error and print the error message */
 #define checkCUDNN(expression) {                             \
@@ -39,6 +42,14 @@
     }                                                        \
 }
 
+/* Enum fot the Algorith Type to be used in Conv */
+typedef enum{
+  t_CUDNN = 0,
+  t_CUSTOM_DIRECT,
+  t_CUSTOM_FFT,
+  t_CUSTOM_IM2COL,
+  t_CUSTOM_WINOGRAD
+} customAlgorithmType; 
 
 /* Class for Convolution Operation :
  *  Supports Forward Pass with and without Bias
@@ -58,7 +69,9 @@ class Conv2D {
   int dilation;           /* Assumed same in x and y direction */
   float* weights;        
   bool bias_present;      
-  float* bias;            
+  float* bias;
+
+  customAlgorithmType custom_algorithm;
 
   cudnnTensorFormat_t data_format = CUDNN_TENSOR_NCHW;
   cudnnTensorFormat_t param_format = CUDNN_TENSOR_NCHW;
@@ -72,15 +85,22 @@ class Conv2D {
   cudnnConvolutionFwdAlgo_t convolution_algorithm;
   size_t workspace_bytes = 0;
 
-
-  
   /* Constructor:
-   *  To create the Conv2D Class object
+   *  To create the Conv2D Class object with default algorithm as CUDNN
    *  Input - Output Channels (# filters), Input Channels, Filter Height, Filter Width, BatchSize of data, Padding, Stride, Dilation,
    *          Height of the Input, Width of the Input, CUDNN Descriptor
    */
   Conv2D(int out_channels, int in_channels, int h, int w, int batchsize, int padding, int stride, int dilation, 
         int input_height, int input_width, cudnnHandle_t cudnn);
+  
+  /* Constructor for Custom Algorithm:
+   *  To create the Conv2D Class object with the provided algo to use for convolution
+   *  Input - Output Channels (# filters), Input Channels, Filter Height, Filter Width, BatchSize of data, Padding, Stride, Dilation,
+   *          Height of the Input, Width of the Input, Algorithm to use for convolution, CUDNN Descriptor
+   */
+  Conv2D(int out_channels, int in_channels, int h, int w, int batchsize, int padding, int stride, int dilation, 
+        int input_height, int input_width, customAlgorithmType algo, cudnnHandle_t cudnn);
+
   
   /* Destructor */
   ~Conv2D();
@@ -104,13 +124,25 @@ class Conv2D {
    */
   void GetOutputDims(int* out_n, int* out_c, int* out_h, int* out_w);
 
-  /* Forward Pass Operation:
-   *  Computes the forward convolution on the given input
+  /* Wrapper Forward Pass Operation:
+   *  Computes the forward convolution on the given input by selecting the algorithm based on the convolution_algorithm attribute
    *  Input - Values/Inputs from the previous layer (in host memory)
    *  Output - Pointer to the result array (in host memory)
    */
-  float* ConvForward(float* input);
+  float* ConvForward(float* input, float &time_elapsed);
 
+  /* Forward Pass Operation using CUDNN in-built function */
+  float* Conv_CUDNN(float* input, float &time_elapsed);
+  
+  /* Forward Pass Operation using Direct Convolution Kernel */  
+  float* Conv_Direct(float* input, float &time_elapsed);
+ 
+  /* Forward Pass Operation using FFT Kernel */
+  float* Conv_FFT(float* input, float &time_elapsed);
+
+  /* Forward Pass Operation using WInograd Kernel */
+  float* Conv_Winograd(float* input, float &time_elapsed);
+  
  private:
   /* Create Descriptors: 
    *  Creates the necessary descriptors based on the data members (helper to the constructor)
@@ -118,7 +150,7 @@ class Conv2D {
   void CreateDescriptors();
 };
 
-
+/* Enum fot the Pooling Type - Max or Average */
 typedef enum{
   t_max = 0,
   t_avg
@@ -147,7 +179,6 @@ class Pool {
   cudnnTensorDescriptor_t output_descriptor;
   cudnnPoolingDescriptor_t pooling_descriptor;
   cudnnPoolingMode_t mode;
-
   
   /* Constructors */
 
@@ -207,7 +238,7 @@ class Pool {
   void CreateDescriptors();
 };
 
-
+/* Enum fot the Activation Type */
 typedef enum{
   t_relu = 0,
   t_sigmoid
