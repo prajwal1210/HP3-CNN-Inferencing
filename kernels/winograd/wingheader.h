@@ -15,7 +15,7 @@ namespace WING {
    *         Pointer to input array
    * Output - The output of the convolution       
    */
-	float *forward(int och, int ch, int bs, int h, int w, int pad, float *in, int &oph, int &opw, float *kwt);
+	float *forward(int och, int ch, int bs, int h, int w, int pad, float *in, int &oph, int &opw, float *kwt, float& conv_time, float& overhead_time);
 }
 
 #endif

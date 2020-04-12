@@ -329,7 +329,7 @@ float * tilehost(int och, int ch, int bs, int h, int w, int pad, float *in, int 
     return cutY;
 } 
 
-float * WING::forward(int och, int ch, int bs, int h, int w, int pad, float *in, int &oph, int &opw, float *kwt)
+float * WING::forward(int och, int ch, int bs, int h, int w, int pad, float *in, int &oph, int &opw, float *kwt, float& conv_time, float& overhead_time)
 {
     float *kwt_new = (float *)malloc(ch*3*3*sizeof(float));
     int newh, neww;

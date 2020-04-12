@@ -87,7 +87,7 @@ void Conv2D::GetOutputDims(int* out_n, int* out_c, int* out_h, int* out_w) {
 }
 
 /* (Conv2D)ConvForward Implementation : Wrapper that decides on what forward pass algorithm to use and calls the appropriate function */
-float* Conv2D::ConvForward(float* input, float &time_elapsed) {
+float* Conv2D::ConvForward(float* input, profilingElapsedTime &time_elapsed) {
   float* output;
   switch(this->custom_algorithm) {
     case t_CUDNN:
@@ -107,7 +107,7 @@ float* Conv2D::ConvForward(float* input, float &time_elapsed) {
 }
 
 /* (Conv2D)Conv_CUDNN Implementation : Forward pass using the CUDNN built-in functions */
-float* Conv2D::Conv_CUDNN(float* input, float &time_elapsed) {
+float* Conv2D::Conv_CUDNN(float* input, profilingElapsedTime &time_elapsed) {
   std::cout << "USING CUDNNN CONVOLUTION" << std::endl;
   std::cout << "Workspace size: " << (this->workspace_bytes / 1048576.0) << "MB" << std::endl;
 
@@ -167,7 +167,10 @@ float* Conv2D::Conv_CUDNN(float* input, float &time_elapsed) {
   cudaEventSynchronize(stop);
   float milliseconds = 0;
   cudaEventElapsedTime(&milliseconds, start, stop);
-  time_elapsed = milliseconds;
+  time_elapsed.total = milliseconds;
+  time_elapsed.conv = milliseconds;
+  time_elapsed.overhead = 0;
+
   
   float* d_bias{nullptr};
   if (this->bias_present) {
@@ -198,7 +201,7 @@ float* Conv2D::Conv_CUDNN(float* input, float &time_elapsed) {
 }
 
 /* (Conv2D)Conv_CUDNN Implementation : Forward pass using the Direct Convolution Kernel */
-float* Conv2D::Conv_Direct(float* input, float &time_elapsed) {
+float* Conv2D::Conv_Direct(float* input, profilingElapsedTime &time_elapsed) {
   std::cout << "USING DIRECT CONVOLUTION" << std::endl;
   int image_in_bytes = this->batchsize * this->in_channels * this->input_height * this->input_width * sizeof(float);
   
@@ -218,9 +221,11 @@ float* Conv2D::Conv_Direct(float* input, float &time_elapsed) {
   cudaEventSynchronize(stop);
   float milliseconds = 0;
   cudaEventElapsedTime(&milliseconds, start, stop);
-  time_elapsed = milliseconds;
+  time_elapsed.total = milliseconds;
+  time_elapsed.conv = conv_time;
+  time_elapsed.overhead = overhead_time;
 
-  std::cout << "TIME ELAPSED - " << time_elapsed << " = "  << conv_time << " + " << overhead_time << std::endl;
+  std::cout << "TIME ELAPSED - " << time_elapsed.total << " = "  << time_elapsed.conv << " + " << time_elapsed.overhead << std::endl;
 
   int out_n, out_c, out_h, out_w;
   this->GetOutputDims(&out_n, &out_c, &out_h, &out_w);
@@ -260,7 +265,7 @@ float* Conv2D::Conv_Direct(float* input, float &time_elapsed) {
 }
 
 /* (Conv2D)Conv_CUDNN Implementation : Forward pass using FFT Kernel */
-float* Conv2D::Conv_FFT(float* input, float &time_elapsed) {
+float* Conv2D::Conv_FFT(float* input, profilingElapsedTime &time_elapsed) {
   std::cout << "USING FFT CONVOLUTION" << std::endl;
   int image_in_bytes = this->batchsize * this->in_channels * this->input_height * this->input_width * sizeof(float);
   int out_n, out_c, out_h, out_w;
@@ -284,9 +289,11 @@ float* Conv2D::Conv_FFT(float* input, float &time_elapsed) {
   cudaEventSynchronize(stop);
   float milliseconds = 0;
   cudaEventElapsedTime(&milliseconds, start, stop);
-  time_elapsed = milliseconds;
+  time_elapsed.total = milliseconds;
+  time_elapsed.conv = conv_time;
+  time_elapsed.overhead = overhead_time;
   
-  std::cout << "TIME ELAPSED - " << time_elapsed << " = "  << conv_time << " + " << overhead_time << std::endl;
+  std::cout << "TIME ELAPSED - " << time_elapsed.total << " = "  << time_elapsed.conv << " + " << time_elapsed.overhead << std::endl;
 
   const float alpha = 1, beta = 0;
   float* d_bias{nullptr};
@@ -320,8 +327,8 @@ float* Conv2D::Conv_FFT(float* input, float &time_elapsed) {
 }
 
 /* (Conv2D)Conv_Winograd Implementation : Forward pass using Winograd Kernel */
-float* Conv2D::Conv_Winograd(float* input, float &time_elapsed) {
-  std::cout << "USING Winograd CONVOLUTION" << std::endl;
+float* Conv2D::Conv_Winograd(float* input, profilingElapsedTime &time_elapsed) {
+  std::cout << "USING WINOGRAD CONVOLUTION" << std::endl;
   int image_in_bytes = this->batchsize * this->in_channels * this->input_height * this->input_width * sizeof(float);
   int out_n, out_c, out_h, out_w;
   this->GetOutputDims(&out_n, &out_c, &out_h, &out_w);
@@ -330,7 +337,7 @@ float* Conv2D::Conv_Winograd(float* input, float &time_elapsed) {
   std::cout << "Input - ( " << this->batchsize << ", " << this->in_channels << ", " << this->input_height << ", " << this->input_width << " )" << std::endl;
   
   int out_h_win, out_w_win;
-
+  float conv_time, overhead_time;
   cudaEvent_t start, stop;
   cudaEventCreate(&start);
   cudaEventCreate(&stop);  
@@ -338,15 +345,18 @@ float* Conv2D::Conv_Winograd(float* input, float &time_elapsed) {
   cudaEventRecord(start);
 
   float* h_output = WING::forward(this->out_channels, this->in_channels, this->batchsize, this->input_height, 
-                    this->input_width, this->padding, input, out_h_win, out_w_win, this->weights);
+                    this->input_width, this->padding, input, out_h_win, out_w_win, this->weights, conv_time, overhead_time);
   
   cudaEventRecord(stop);
 
   cudaEventSynchronize(stop);
   float milliseconds = 0;
   cudaEventElapsedTime(&milliseconds, start, stop);
-  time_elapsed = milliseconds;
+  time_elapsed.total = milliseconds;
+  time_elapsed.conv = conv_time;
+  time_elapsed.overhead = overhead_time;
 
+  std::cout << "TIME ELAPSED - " << time_elapsed.total << " = "  << time_elapsed.conv << " + " << time_elapsed.overhead << std::endl;
 
   if(out_h != out_h_win || out_w != out_w_win) {
     std::cerr << "Winograd : Ouput Size Mismatch" << std::endl;

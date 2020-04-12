@@ -46,9 +46,9 @@ int main(int argc, char **argv) {
   }
   
   bool succes = true;
-  std::vector<float> time_conv;
+  std::vector<profilingElapsedTime> time_elapsed;
 
-  float* output = CNN::forwardPass(net, batchsize, input_h, input_w, input_c, input, t, time_conv, succes);
+  float* output = CNN::forwardPass(net, batchsize, input_h, input_w, input_c, input, t, time_elapsed, succes);
 
   FILE* fp;
   fp = fopen("final_out.txt" , "w");
@@ -59,8 +59,8 @@ int main(int argc, char **argv) {
 
   fclose(fp);
 
-  for(auto t : time_conv) {
-    std::cout << t << "ms, ";
+  for(auto t : time_elapsed) {
+    std::cout << "(" << t.total << ", " << t.conv << "," << t.overhead << "ms), ";
   }
   std::cout << std::endl;
 
