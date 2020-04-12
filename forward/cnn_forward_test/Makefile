@@ -14,6 +14,7 @@ PROTO_LIBRARY = $(shell find $(PROJECT_DIR) -name network.pb.cc)
 DIRECT_CONV = $(shell find $(PROJECT_DIR) -name direct_conv.cu)
 FFT_KERNEL = $(shell find $(PROJECT_DIR) -name fft.cu)
 WINOGRAD_KERNEL = $(shell find $(PROJECT_DIR) -name winograd_mem_out.cu)
+IM2COL_KERNEL = $(shell find $(PROJECT_DIR) -name im2col.cu)
 
 test: cnn_forward_test.cc $(OPERATIONS_LIBRARY) $(CNN_FORWARD_LIBRARY) $(DATA_UTIL_LIBRARY) $(TRANSLATOR_LIBRARY) $(PROTO_LIBRARY) $(FFT_KERNEL) $(DIRECT_CONV) $(WINOGRAD_KERNEL)
 	$(NVCC) -I $(PROJECT_DIR) -L $(CUBLAS) $(CXXFLAGS) $? $(OPENCV_LIB_FLAGS) $(PROTOBUF_LIB_FLAGS) $(CUDA_LIB_FLAGS) -o $@
@@ -46,3 +47,10 @@ run_fft:
 run_winograd:
 	./test "$(PROJECT_DIR)/pretrained-models/vgg19.pb" "WINOGRAD" 1>/dev/null
 	python cnn_forward_test.py vgg
+
+run_im2col:
+	./test "$(PROJECT_DIR)/pretrained-models/vgg19.pb" "IM2COL" 1>/dev/null
+	python batch_test.py vgg
+	@echo ""
+	./test "$(PROJECT_DIR)/pretrained-models/alexnet.pb" "IM2COL" 1>/dev/null
+	python batch_test.py alex 

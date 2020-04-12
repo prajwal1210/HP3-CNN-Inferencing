@@ -102,6 +102,9 @@ float* Conv2D::ConvForward(float* input, float &time_elapsed) {
     case t_CUSTOM_FFT:
       output = this->Conv_FFT(input, time_elapsed);
       break;
+    case t_CUSTOM_IM2COL:
+      output = this->Conv_Im2Col(input, time_elapsed);
+      break;
   }
   return output;
 }
@@ -351,6 +354,64 @@ float* Conv2D::Conv_Winograd(float* input, float &time_elapsed) {
 
   std::cout << "Output - ( " << this->batchsize << ", " << this->out_channels << ", " << out_h << ", " << out_w << " )" << std::endl;
   
+  const float alpha = 1, beta = 0;
+  float* d_bias{nullptr};
+  float* d_output{nullptr};
+  if (this->bias_present) {
+    cudaMalloc(&d_output, image_out_bytes);
+    cudaMemcpy(d_output, h_output, image_out_bytes, cudaMemcpyHostToDevice);
+    
+    int bias_size = this->out_channels * sizeof(float);
+    cudaMalloc(&d_bias, bias_size);
+    cudaMemcpy(d_bias, this->bias, bias_size, cudaMemcpyHostToDevice);
+    
+    checkCUDNN(cudnnAddTensor(this->cudnn, 
+                              &alpha,
+                              this->convbias_descriptor,
+                              d_bias, 
+                              &alpha,
+                              this->output_descriptor, 
+                              d_output));
+
+    cudaMemcpy(h_output, d_output, image_out_bytes, cudaMemcpyDeviceToHost);
+  }
+
+  /* Free the temporary memory */
+  if (this->bias_present) {
+    cudaFree(d_output);
+    cudaFree(d_bias);
+  }
+
+  return h_output;
+}
+
+/* (Conv2D)Conv_Im2Col Implementation : Forward pass using Im2Col followed by GEMM */
+float* Conv2D::Conv_Im2Col(float* input, float &time_elapsed) {
+  std::cout << "USING Im2Col CONVOLUTION" << std::endl;
+  int image_in_bytes = this->batchsize * this->in_channels * this->input_height * this->input_width * sizeof(float);
+  int out_n, out_c, out_h, out_w;
+  this->GetOutputDims(&out_n, &out_c, &out_h, &out_w);
+  int image_out_bytes = this->batchsize * this->out_channels * out_h * out_w * sizeof(float);
+  
+  std::cout << "Input - ( " << this->batchsize << ", " << this->in_channels << ", " << this->input_height << ", " << this->input_width << " )" << std::endl;
+  std::cout << "Output - ( " << this->batchsize << ", " << this->out_channels << ", " << out_h << ", " << out_w << " )" << std::endl;
+
+  cudaEvent_t start, stop;
+  cudaEventCreate(&start);
+  cudaEventCreate(&stop);  
+
+  cudaEventRecord(start);
+
+  float* h_output = Im2Col::forward(this->out_channels, this->in_channels, this->h, this->w, this->padding, this->stride, this->weights,
+              this->batchsize, this->input_height, this->input_width, input);
+
+  cudaEventRecord(stop);
+
+  cudaEventSynchronize(stop);
+  float milliseconds = 0;
+  cudaEventElapsedTime(&milliseconds, start, stop);
+  time_elapsed = milliseconds;
+
   const float alpha = 1, beta = 0;
   float* d_bias{nullptr};
   float* d_output{nullptr};

@@ -21,6 +21,7 @@
 #include "kernels/Direct/direct_conv.h"
 #include "kernels/FFT/fftheader.h"
 #include "kernels/winograd/wingheader.h"
+#include "kernels/im2col/im2col.hpp"
 
 /* Macro to check CUDNN error and print the error message */
 #define checkCUDNN(expression) {                             \
@@ -142,6 +143,9 @@ class Conv2D {
 
   /* Forward Pass Operation using WInograd Kernel */
   float* Conv_Winograd(float* input, float &time_elapsed);
+
+  /* Forward Pass Operation using Im2Col Kernel */
+  float* Conv_Im2Col(float* input, float &time_elapsed);
   
  private:
   /* Create Descriptors: 

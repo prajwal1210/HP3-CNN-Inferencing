@@ -88,18 +88,6 @@ template void im2col_gpu<double>(const double* data_im, const int channels,
 								 const int stride, double* data_col);
 
 
-// Helper function for using CUDA to add vectors in parallel.
-//const float* data_im // raw data,
-//const int channels // image channels
-//const int height //image height
-//const int width // image width
-//const int ksize // kernel size
-//const int pad // pad size
-//const int stride // stride size
-//const int height_col // output column height
-//const int width_col // output column width
-//float* data_col // outpu data
-
 cudaError_t im2colWithCuda(
 	const float* data_im,
 	const int batch_size,
