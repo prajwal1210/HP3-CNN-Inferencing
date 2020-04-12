@@ -203,7 +203,7 @@ float* Conv2D::Conv_Direct(float* input, float &time_elapsed) {
   int image_in_bytes = this->batchsize * this->in_channels * this->input_height * this->input_width * sizeof(float);
   
   std::cout << "Input - ( " << this->batchsize << ", " << this->in_channels << ", " << this->input_height << ", " << this->input_width << " )" << std::endl;
-  
+  float conv_time, overhead_time;
   cudaEvent_t start, stop;
   cudaEventCreate(&start);
   cudaEventCreate(&stop);  
@@ -211,7 +211,7 @@ float* Conv2D::Conv_Direct(float* input, float &time_elapsed) {
   cudaEventRecord(start);
 
   float* h_output =  Direct::passforward(this->out_channels, this->in_channels, this->h, this->w, this->padding, this->stride, 
-                                    this->weights, this->batchsize, this->input_height, this->input_width, input);
+                                    this->weights, this->batchsize, this->input_height, this->input_width, input, conv_time, overhead_time);
   
   cudaEventRecord(stop);
 
@@ -219,6 +219,8 @@ float* Conv2D::Conv_Direct(float* input, float &time_elapsed) {
   float milliseconds = 0;
   cudaEventElapsedTime(&milliseconds, start, stop);
   time_elapsed = milliseconds;
+
+  std::cout << "TIME ELAPSED - " << time_elapsed << " = "  << conv_time << " + " << overhead_time << std::endl;
 
   int out_n, out_c, out_h, out_w;
   this->GetOutputDims(&out_n, &out_c, &out_h, &out_w);
@@ -267,7 +269,7 @@ float* Conv2D::Conv_FFT(float* input, float &time_elapsed) {
   
   std::cout << "Input - ( " << this->batchsize << ", " << this->in_channels << ", " << this->input_height << ", " << this->input_width << " )" << std::endl;
   std::cout << "Output - ( " << this->batchsize << ", " << this->out_channels << ", " << out_h << ", " << out_w << " )" << std::endl;
-
+  float conv_time, overhead_time;
   cudaEvent_t start, stop;
   cudaEventCreate(&start);
   cudaEventCreate(&stop);  
@@ -275,7 +277,7 @@ float* Conv2D::Conv_FFT(float* input, float &time_elapsed) {
   cudaEventRecord(start);
 
   float* h_output = FFT::forward(this->out_channels, this->in_channels, this->h, this->w, this->padding, this->stride, this->weights,
-              this->batchsize, this->input_height, this->input_width, input);
+              this->batchsize, this->input_height, this->input_width, input, conv_time, overhead_time);
 
   cudaEventRecord(stop);
 
@@ -283,6 +285,8 @@ float* Conv2D::Conv_FFT(float* input, float &time_elapsed) {
   float milliseconds = 0;
   cudaEventElapsedTime(&milliseconds, start, stop);
   time_elapsed = milliseconds;
+  
+  std::cout << "TIME ELAPSED - " << time_elapsed << " = "  << conv_time << " + " << overhead_time << std::endl;
 
   const float alpha = 1, beta = 0;
   float* d_bias{nullptr};
