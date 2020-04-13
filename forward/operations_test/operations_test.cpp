@@ -204,7 +204,7 @@ int main(int argc, char** argv) {
   cudnnHandle_t cudnn;
   checkCUDNN(cudnnCreate(&cudnn));
 
-  customAlgorithmType t = t_CUDNN;
+  customAlgorithmType t = t_CUSTOM_IM2COL;
   if(argc == 2) {
     std::string algo(argv[1]);
     if (algo == "DIRECT") {
@@ -216,7 +216,9 @@ int main(int argc, char** argv) {
     else if(algo == "WINOGRAD") {
       t = t_CUSTOM_WINOGRAD;
     }
-
+    else if(algo == "IM2COL") {
+      t = t_CUSTOM_IM2COL;
+    }
   }
 
   /* Read Image */
