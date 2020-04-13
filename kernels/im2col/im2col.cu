@@ -80,7 +80,7 @@ void im2col_gemm_gpu(const float * data_im, const float * data_ker, cublasHandle
 		{
 		  for (int k = 0; k < kh * kw; ++k)
 		  	std::cout << hcol * wcol * l * kh * kw + i * wcol + j + k * hcol * wcol << ": " <<
-					  << im2col_ptr[hcol * wcol * l * kh * kw + i * wcol + j + k * hcol * wcol] << " ";
+						 im2col_ptr[hcol * wcol * l * kh * kw + i * wcol + j + k * hcol * wcol] << " ";
 		  printf("\n");
 		}	
 		printf("\n");
