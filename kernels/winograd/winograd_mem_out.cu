@@ -247,16 +247,23 @@ void tilehost(int p, int q, int och, int ch, int bs, int h, int w, int pad, floa
     dim3 grid(bs, p, q);  // 3-D
     dim3 block(ch, 1, 1); // 1-D
     
-    cudaEventRecord(start);
     // call the kernel function for tiling
+    cudaEventRecord(start);
     tile<<<grid, block>>>(bs, p, q, ch, devin, devout, devsum, devY, devU, h, w, och, devfin);
-    //cudaSafeCall(cudaGetLastError());
+    cudaEventRecord(stop);
+
+    // cudaSafeCall(cudaGetLastError());
+    cudaEventSynchronize(stop);
+    milliseconds = 0;
+    cudaEventElapsedTime(&milliseconds, start, stop);
+    conv_time += milliseconds;
 
     
     size_t cutsize = bs*och*oph*opw*sizeof(float);
     dim3 cutgrid(bs*och, p, q);
     dim3 cutblock(1,1,1);
     
+    cudaEventRecord(start);
     cutpad<<<cutgrid, cutblock>>> (devY, devcutY, oph, opw);   
     cudaEventRecord(stop);
     // copy from device to host.
@@ -264,7 +271,7 @@ void tilehost(int p, int q, int och, int ch, int bs, int h, int w, int pad, floa
     // cutY = (float *)malloc(cutsize);
 
     cudaSafeCall(cudaMemcpy(cutY, devcutY, cutsize, cudaMemcpyDeviceToHost));
-    
+    cudaSafeCall(cudaGetLastError());
     cudaEventSynchronize(stop);
     milliseconds = 0;
     cudaEventElapsedTime(&milliseconds, start, stop);
@@ -389,10 +396,18 @@ float * WING::forward(int och, int ch, int bs, int h, int w, int pad, float *in,
         overhead_time += milliseconds;
     
         tilehost(p,q,1,ch,bs,h,w,pad,devin,oph,opw,devtempU,cuttempY,devout, devsum, devfin, devY, devcutY, conv_time, overhead_time);
+
+        cudaEventRecord(start);
         LOOP(bs)
             LOOP(oph)
                 LOOP(opw)
                     cutY[((((tbs*och+toch)*oph+toph)*opw)+topw)] = cuttempY[(((tbs*oph)+toph)*opw+topw)];
+        cudaEventRecord(stop);
+        cudaEventSynchronize(stop);
+        milliseconds = 0;
+        cudaEventElapsedTime(&milliseconds, start, stop);
+        overhead_time += milliseconds;
+
     }
     
     free(cuttempY);

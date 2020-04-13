@@ -208,15 +208,20 @@ float* conv_operation(float* filter_align, float* input_layer_pad, int H, int W,
 
   cudaMemcpy(d_inA, filter_align_in, real_size,  cudaMemcpyHostToDevice);
   
-  cudaEventRecord(start);
-  
   /* Make the plans for filter and inverse of output */
+  cudaEventRecord(start);
   cufftSafeCall(cufftPlanMany(&fwplanA, 3, N, NULL, 0,0,NULL,0,0, CUFFT_R2C ,new_BS));
   cufftSafeCall(cufftPlanMany(&bwplan, 3, N, NULL, 0,0,NULL,0,0, CUFFT_C2R ,new_BS));
+  cudaEventRecord(stop);
+
+  cudaEventSynchronize(stop);
+  milliseconds = 0;
+  cudaEventElapsedTime(&milliseconds, start, stop);
+  conv_time += milliseconds;
   
   /* FFT on the filter */
+  cudaEventRecord(start);
   cufftSafeCall(cufftExecR2C(fwplanA, d_inA, d_outA));
-  
   cudaEventRecord(stop);
 
   cudaMemcpy(d_outB, input_layer_pad, (BS) * D * H * (W/2 + 1) * sizeof(cufftComplex), cudaMemcpyHostToDevice); 
@@ -230,13 +235,19 @@ float* conv_operation(float* filter_align, float* input_layer_pad, int H, int W,
   dim3 threads4(256);
   dim3 grid4(blocksx);
   
+  /* PointWise Product */
   cudaEventRecord(start);
-
   pointwise_product<<<grid4, threads4>>>(d_outA, d_outB, (new_BS * D*H*(W/2 + 1)), 1.0f/(H*W*D));
-  
+  cudaEventRecord(stop);
+
+  cudaEventSynchronize(stop);
+  milliseconds = 0;
+  cudaEventElapsedTime(&milliseconds, start, stop);
+  conv_time += milliseconds;
+
   /* Inverse FFT of output */
+  cudaEventRecord(start);
   cufftSafeCall(cufftExecC2R(bwplan, d_outA, d_inA));
-  
   cudaEventRecord(stop);
 
   float* result1 = (float*)malloc((BS) * D * H * W * sizeof(float));
@@ -292,9 +303,7 @@ float* pre_processinput(float* input_layer, int pad, int  batch_size, int* il_di
     dim3 grid1(new_H,new_W,D);
 
     cudaEventRecord(start);
-
     pad_input<<<grid1,threads1>>>(pad_input_in, pad_input_out, H,W,D,pad, pad);
-    
     cudaEventRecord(stop);
     
     err = cudaGetLastError(); if(err!=cudaSuccess){fprintf(stderr, "Failed to launch pad input (error code %s)!\n", cudaGetErrorString(err)); exit(EXIT_FAILURE);}
@@ -327,10 +336,17 @@ float* pre_processinput(float* input_layer, int pad, int  batch_size, int* il_di
   cudaMemcpy(d_input, input_layer_pad, real_size, cudaMemcpyHostToDevice);
   
   cudaEventRecord(start);
-
   cufftSafeCall(cufftPlanMany(&fwplan_input, 3, N, NULL, 0,0,NULL,0,0, CUFFT_R2C ,BS));
+  cudaEventRecord(stop);
+
+  cudaEventSynchronize(stop);
+  milliseconds = 0;
+  cudaEventElapsedTime(&milliseconds, start, stop);
+  conv_time += milliseconds;
+
+
+  cudaEventRecord(start);
   cufftSafeCall(cufftExecR2C(fwplan_input, d_input, d_input_complex));
-  
   cudaEventRecord(stop);
   
   cudaMemcpy(complex_input, d_input_complex , complex_size, cudaMemcpyDeviceToHost);
@@ -377,9 +393,7 @@ float* convolve_FFT(float* input_layer_pad, float * kernel, int pad, int stride,
   dim3 grid0(fH,fW,fD);
 
   cudaEventRecord(start);
-
   flip_filer<<<grid0, threads0>>>(f_A, f_B, fH,fW,fD);
-  
   cudaEventRecord(stop);
 
   err = cudaGetLastError(); if(err!=cudaSuccess){fprintf(stderr, "Failed to launch align_filter(error code %s)!\n", cudaGetErrorString(err)); exit(EXIT_FAILURE);}
@@ -404,9 +418,7 @@ float* convolve_FFT(float* input_layer_pad, float * kernel, int pad, int stride,
   dim3 grid2(new_fH,new_fW,D);
 
   cudaEventRecord(start);
-
   pad_input<<<grid2,threads2>>>(pad_filter_in, pad_filter_out, fH,fW,D,fpad,bpad);
-
   cudaEventRecord(stop);
 
   err = cudaGetLastError(); if(err!=cudaSuccess){fprintf(stderr, "Failed to launch pad filter(error code %s)!\n", cudaGetErrorString(err)); exit(EXIT_FAILURE);}
@@ -430,9 +442,7 @@ float* convolve_FFT(float* input_layer_pad, float * kernel, int pad, int stride,
   dim3 grid3(fH,fW,fD);
 
   cudaEventRecord(start);
-
   align_filer<<<grid3, threads3>>>(d_A, d_B, fH,fW,fD);
-
   cudaEventRecord(stop);
 
   err = cudaGetLastError(); if(err!=cudaSuccess){fprintf(stderr, "Failed to launch align_filter(error code %s)!\n", cudaGetErrorString(err)); exit(EXIT_FAILURE);}
@@ -472,9 +482,7 @@ float* convolve_FFT(float* input_layer_pad, float * kernel, int pad, int stride,
     dim3 grid5(H,W,1);
 
     cudaEventRecord(start);
-
     crop<<<grid5, threads5>>>(crop_in, crop_out, H, W, oH, oW, D);
-
     cudaEventRecord(stop);
 
     err = cudaGetLastError(); if(err!=cudaSuccess){fprintf(stderr, "Failed to launch crop(error code %s)!\n", cudaGetErrorString(err)); exit(EXIT_FAILURE);}
@@ -503,9 +511,7 @@ float* convolve_FFT(float* input_layer_pad, float * kernel, int pad, int stride,
       dim3 grid6(oH,oW,1);
 
       cudaEventRecord(start);
-
       stride_<<<grid6, threads6>>>(stride_in, stride_out ,oH, oW, stride);
-
       cudaEventRecord(stop);
 
       err = cudaGetLastError(); if(err!=cudaSuccess){fprintf(stderr, "Failed to launch stride(error code %s)!\n", cudaGetErrorString(err)); exit(EXIT_FAILURE);}
