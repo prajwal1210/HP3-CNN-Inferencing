@@ -4,7 +4,7 @@
 // converts an image of shape: ic x ih x iw (ic: input_channels in image)
 // to 2D col of shape: (ic * kh * kw) x (hcol * wcol)
 // data_im is pointer to image, data_col is pointer to output
-__global__ void im2col_kernel(float * data_im, float * data_col, const int n,
+__global__ void im2col_kernel(const float * img, const float * col, const int n,
 							  const int kh, const int kw, const int pad, const int stride,
 							  const int ih, const int iw, const int ic,
 							  const int hcol, const int wcol) 
@@ -19,8 +19,8 @@ __global__ void im2col_kernel(float * data_im, float * data_col, const int n,
 		int channel_out = channel_in * kh * kw;
 		int h_in = h_out * stride - pad;
 		int w_in = w_out * stride - pad;
-		data_col += (channel_out * hcol + h_out) * wcol + w_out;
-		data_im += (channel_in * ih + h_in) * iw + w_in;
+		float * data_im = img + (channel_in * ih + h_in) * iw + w_in;
+		float * data_col = col + (channel_out * hcol + h_out) * wcol + w_out;
 		#pragma unroll
 		for (int i = 0; i < kh; ++i) {
 			for (int j = 0; j < kw; ++j) {
@@ -37,7 +37,7 @@ __global__ void im2col_kernel(float * data_im, float * data_col, const int n,
 // takes in the image on GPU: ic x ih x iw (ic: input channels)
 // and the kernels on GPU: oc x ic x kh x kw (oc: output channels)
 // does the convolution and returns
-void im2col_gemm_gpu(const float * data_im, const float * data_ker,
+void im2col_gemm_gpu(const float * data_im, const float * data_ker, cublasHandle_t handle,
 					 const int kh, const int kw, const int pad, const int stride,
 					 const int ih, const int iw, const int ic, const int oc,
 					 const float * data_col, const float * data_out)
@@ -71,7 +71,6 @@ void im2col_gemm_gpu(const float * data_im, const float * data_ker,
 	// get params ready for GEMM call
 	const float alpha = 1.0f;
 	const float beta  = 0.0f;
-	int ldA, ldB, ldC;
 	int m = ldA = ldC = hcol * wcol;
 	int n = ldB = oc;
 	int k = ic * kh * kw;
@@ -139,7 +138,8 @@ float * im2colWithCuda(const float * dev_image, const float * dev_kernel, const 
 	for(int i = 0; i < batch_size; i++)
 	{
 		// Launch GPU kernel to work on each image
-		im2col_gemm_gpu(t_dev_image, dev_kernel, kh, kw, pad, stride, ih, iw, ic, oc, t_dev_col, t_dev_ret);
+		im2col_gemm_gpu(t_dev_image, dev_kernel, handle, kh, kw, pad, 
+							stride, ih, iw, ic, oc, t_dev_col, t_dev_ret);
 
 		t_dev_image += image_size;
 		t_dev_col += one_col;
