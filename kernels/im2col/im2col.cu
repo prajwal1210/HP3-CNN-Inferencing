@@ -89,8 +89,17 @@ void im2col_gemm_gpu(const float * data_im, const float * data_ker, cublasHandle
 
 float * im2colWithCuda(const float * data_im, const float * data_ker, const int batch,
 					   const int kh, const int kw, const int pad, const int stride,
-					   const int ih, const int iw, const int ic, const int oc)
+					   const int ih, const int iw, const int ic, const int oc, float& conv_time, float& overhead_time)
 {
+
+	// Timing variables - CUDA Event API
+	overhead_time = 0;
+	conv_time = 0;
+	float milliseconds = 0;
+	cudaEvent_t start, stop;
+	cudaEventCreate(&start);
+	cudaEventCreate(&stop);  
+
 	// image dim
 	ssize_t image_size = ic * ih * iw;
 	ssize_t images_size = batch * image_size;
@@ -137,13 +146,20 @@ float * im2colWithCuda(const float * data_im, const float * data_ker, const int 
 	float * t_dev_ret = dev_ret;
 	for(int i = 0; i < batch; i++)
 	{
+		cudaEventRecord(start);
 		// Launch GPU kernel to work on each image
 		im2col_gemm_gpu(t_dev_image, dev_kernel, handle, kh, kw, pad, 
 							stride, ih, iw, ic, oc, t_dev_col, t_dev_ret);
-
+		cudaEventRecord(stop);
+		
 		t_dev_image += image_size;
 		t_dev_col += one_col;
 		t_dev_ret += output_feature;
+		
+		cudaEventSynchronize(stop);
+		milliseconds = 0;
+		cudaEventElapsedTime(&milliseconds, start, stop);
+		conv_time += milliseconds;
 	}
 
 	// cuBLAS finalize
@@ -175,14 +191,17 @@ float * im2colWithCuda(const float * data_im, const float * data_ker, const int 
 	cudaFree(dev_kernel);
 	cudaFree(dev_ret);
 	
+	cudaEventDestroy(start);
+	cudaEventDestroy(stop);
+  
 	// sdkDeleteTimer(&timer);
 
 	return data_ret;
 }
 
 float* IM2COL::forward(int out_size, int channel, int kernel_height, int kernel_width, int pad, 
-		int stride, float* kernel, int batch_size, int input_height, int input_width, float* input)
+		int stride, float* kernel, int batch_size, int input_height, int input_width, float* input, float& conv_time, float& overhead_time)
 {
 	return im2colWithCuda(input, kernel, batch_size, kernel_height, kernel_width, 
-					pad, stride, input_height, input_width, channel, out_size);
+					pad, stride, input_height, input_width, channel, out_size, conv_time, overhead_time);
 }

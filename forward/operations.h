@@ -148,10 +148,10 @@ class Conv2D {
   float* Conv_FFT(float* input, profilingElapsedTime &time_elapsed);
 
   /* Forward Pass Operation using WInograd Kernel */
-  float* Conv_Winograd(float* input, float &time_elapsed);
+  float* Conv_Winograd(float* input, profilingElapsedTime &time_elapsed);
 
   /* Forward Pass Operation using Im2Col Kernel */
-  float* Conv_Im2Col(float* input, float &time_elapsed);
+  float* Conv_Im2Col(float* input, profilingElapsedTime &time_elapsed);
   
  private:
   /* Create Descriptors: 

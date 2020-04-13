@@ -62,7 +62,7 @@ namespace IM2COL
 	* Output - The output of the convolution	   
 	*/
 	float* forward(int out_size, int channel, int kernel_height, int kernel_width, int pad, int stride, 
-		float* kernel, int batch_size, int input_height, int input_width, float* input);
+		float* kernel, int batch_size, int input_height, int input_width, float* input, float& conv_time, float& overhead_time);
 }
 
 #endif // __IM2COL_H__

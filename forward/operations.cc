@@ -400,7 +400,7 @@ float* Conv2D::Conv_Winograd(float* input, profilingElapsedTime &time_elapsed) {
 }
 
 /* (Conv2D)Conv_Im2Col Implementation : Forward pass using Im2Col followed by GEMM */
-float* Conv2D::Conv_Im2Col(float* input, float &time_elapsed) {
+float* Conv2D::Conv_Im2Col(float* input, profilingElapsedTime &time_elapsed) {
   std::cout << "USING Im2Col CONVOLUTION" << std::endl;
   int image_in_bytes = this->batchsize * this->in_channels * this->input_height * this->input_width * sizeof(float);
   int out_n, out_c, out_h, out_w;
@@ -410,6 +410,7 @@ float* Conv2D::Conv_Im2Col(float* input, float &time_elapsed) {
   std::cout << "Input - ( " << this->batchsize << ", " << this->in_channels << ", " << this->input_height << ", " << this->input_width << " )" << std::endl;
   std::cout << "Output - ( " << this->batchsize << ", " << this->out_channels << ", " << out_h << ", " << out_w << " )" << std::endl;
 
+  float conv_time, overhead_time;
   cudaEvent_t start, stop;
   cudaEventCreate(&start);
   cudaEventCreate(&stop);  
@@ -417,14 +418,18 @@ float* Conv2D::Conv_Im2Col(float* input, float &time_elapsed) {
   cudaEventRecord(start);
 
   float* h_output = IM2COL::forward(this->out_channels, this->in_channels, this->h, this->w, this->padding, this->stride, this->weights,
-              this->batchsize, this->input_height, this->input_width, input);
+              this->batchsize, this->input_height, this->input_width, input, conv_time, overhead_time);
 
   cudaEventRecord(stop);
 
   cudaEventSynchronize(stop);
   float milliseconds = 0;
   cudaEventElapsedTime(&milliseconds, start, stop);
-  time_elapsed = milliseconds;
+  time_elapsed.total = milliseconds;
+  time_elapsed.conv = conv_time;
+  time_elapsed.overhead = overhead_time;
+
+  std::cout << "TIME ELAPSED - " << time_elapsed.total << " = "  << time_elapsed.conv << " + " << time_elapsed.overhead << std::endl;
 
   const float alpha = 1, beta = 0;
   float* d_bias{nullptr};
