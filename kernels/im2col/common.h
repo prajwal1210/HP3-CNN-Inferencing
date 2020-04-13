@@ -36,4 +36,5 @@
 inline int GET_BLOCKS(const int N) {
 	return (N + CUDA_NUM_THREADS - 1) / CAFFE_CUDA_NUM_THREADS;
 }
+
 #endif
