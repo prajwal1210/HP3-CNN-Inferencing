@@ -27,7 +27,7 @@ int main(int argc, char **argv) {
       t = t_CUSTOM_WINOGRAD;
     }
     else if(algo == "IM2COL") {
-      t = t_CUSTOM_WINOGRAD;
+      t = t_CUSTOM_IM2COL;
     }
   }
 
