@@ -6,7 +6,6 @@
 #include <string>
 
 // CUDA and CUBLAS functions
-#include <helper_functions.h>
 #include <helper_cuda.h>
 
 // CUDA and CUBLAS runtime

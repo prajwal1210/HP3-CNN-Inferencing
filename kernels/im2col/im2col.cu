@@ -1,4 +1,4 @@
-#include "im2col.h"
+#include "im2col.hpp"
 
 
 // converts an image of shape: ic x ih x iw (ic: input_channels in image)
