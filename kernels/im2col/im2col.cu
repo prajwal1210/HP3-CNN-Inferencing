@@ -4,7 +4,7 @@
 // converts an image of shape: ic x ih x iw (ic: input_channels in image)
 // to 2D col of shape: (ic * kh * kw) x (hcol * wcol)
 // data_im is pointer to image, data_col is pointer to output
-__global__ void im2col_kernel(const float * img, const float * col, const int n,
+__global__ void im2col_kernel(const float * data_im, float * data_col, const int n,
 							  const int kh, const int kw, const int pad, const int stride,
 							  const int ih, const int iw, const int ic,
 							  const int hcol, const int wcol) 
@@ -19,8 +19,8 @@ __global__ void im2col_kernel(const float * img, const float * col, const int n,
 		int channel_out = channel_in * kh * kw;
 		int h_in = h_out * stride - pad;
 		int w_in = w_out * stride - pad;
-		float * data_im = img + (channel_in * ih + h_in) * iw + w_in;
-		float * data_col = col + (channel_out * hcol + h_out) * wcol + w_out;
+		data_im += (channel_in * ih + h_in) * iw + w_in;
+		data_col += (channel_out * hcol + h_out) * wcol + w_out;
 		#pragma unroll
 		for (int i = 0; i < kh; ++i) {
 			for (int j = 0; j < kw; ++j) {
@@ -40,7 +40,7 @@ __global__ void im2col_kernel(const float * img, const float * col, const int n,
 void im2col_gemm_gpu(const float * data_im, const float * data_ker, cublasHandle_t handle,
 					 const int kh, const int kw, const int pad, const int stride,
 					 const int ih, const int iw, const int ic, const int oc,
-					 const float * data_col, const float * data_out)
+					 float * data_col, float * data_out)
 {
 	// Step 1: convert the image to col form
 	
@@ -71,6 +71,7 @@ void im2col_gemm_gpu(const float * data_im, const float * data_ker, cublasHandle
 	// get params ready for GEMM call
 	const float alpha = 1.0f;
 	const float beta  = 0.0f;
+	int ldA, ldB, ldC;
 	int m = ldA = ldC = hcol * wcol;
 	int n = ldB = oc;
 	int k = ic * kh * kw;
@@ -82,7 +83,7 @@ void im2col_gemm_gpu(const float * data_im, const float * data_ker, cublasHandle
 	// Output would be matB' * matA' (CUDA view) = (matA * matB)' (CUDA view) = matA * matB (our view)
 	// In essence, trust me when I do col * kernel to achieve kernel * col
 	cublasStatus_t ret =
-		cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, m, n, k, &alpha
+		cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, m, n, k, &alpha,
 					data_col, ldA, data_ker, ldB, &beta, data_out, ldC);
 	CUBLAS_CHECK(ret, "cublas Sgemm returned an error!\n");
 }
@@ -132,9 +133,9 @@ float * im2colWithCuda(const float * dev_image, const float * dev_kernel, const 
 	CUBLAS_CHECK(cublasCreate(&handle), "cublasCreate() error!");
 
 	// loop over the batch
-	float * t_dev_image = dev_image;
-	float * t_dev_col = dev_col;
-	float * t_dev_ret = dev_ret;
+	const float * t_dev_image = dev_image;
+	const float * t_dev_col = dev_col;
+	const float * t_dev_ret = dev_ret;
 	for(int i = 0; i < batch_size; i++)
 	{
 		// Launch GPU kernel to work on each image
@@ -183,7 +184,7 @@ float * im2colWithCuda(const float * dev_image, const float * dev_kernel, const 
 float* IM2COL::forward(int out_size, int channel, int kernel_height, int kernel_width, int pad, 
 		int stride, float* kernel, int batch_size, int input_height, int input_width, float* input)
 {
-	im2colWithCuda(input, kernel, batch_size, kernel_height, kernel_width, 
+	return im2colWithCuda(input, kernel, batch_size, kernel_height, kernel_width, 
 					pad, stride, input_height, input_width, channel, out_size);
 }
 
