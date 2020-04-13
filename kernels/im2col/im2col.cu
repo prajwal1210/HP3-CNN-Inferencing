@@ -48,6 +48,20 @@ void im2col_gemm_gpu(const float * data_im, const float * data_ker, cublasHandle
 	int hcol = (ih + 2 * pad - kh) / stride + 1;
 	int wcol = (iw + 2 * pad - kw) / stride + 1;
 
+	float* im_ptr = (float *)malloc(ic * ih * iw * sizeof(float));
+	CUDA_CHECK(cudaMemcpy(im2ptr, data_im, ic*ih*iw*sizeof(float), cudaMemcpyDeviceToHost));
+	for(int l = 0; l < ic; l++)
+	{
+	  for(int i = 0; i < ih; i++)
+	  {
+		for(int j = 0; j < iw; j++)
+		  std::cout << im_ptr[l * ih * iw + i * iw + j] << " ";	
+		printf("\n");
+	  }
+	  printf("\n\n");
+	}
+	free(im_ptr);
+
 	// We are going to launch ic * hcol * wcol kernels threads for im2col,
 	// each thread is responsible for copying a single-channel grid
 	// one thread per output pixel in the output of conv
@@ -65,6 +79,7 @@ void im2col_gemm_gpu(const float * data_im, const float * data_ker, cublasHandle
 		for(int j = 0; j < wcol; j++)
 		{
 		  for (int k = 0; k < kh * kw; ++k)
+		  	std::cout << hcol * wcol * l * kh * kw + i * wcol + j + k * hcol * wcol << ": ";
 			std::cout << im2col_ptr[hcol * wcol * l * kh * kw + i * wcol + j + k * hcol * wcol] << " ";
 		  printf("\n");
 		}	
