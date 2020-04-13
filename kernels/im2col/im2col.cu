@@ -130,8 +130,8 @@ void im2col_gemm_gpu(const float * data_im, const float * data_ker, cublasHandle
 	const float beta  = 0.0f;
 	int ldA, ldB, ldC;
 	int m = ldA = ldC = hcol * wcol;
-	int n = ldB = oc;
-	int k = ic * kh * kw;
+	int n = oc;
+	int k = ldB = ic * kh * kw;
 	
 	// CUDA sees matrices as column major
 	// So, a matrix we see as HxW, it would see as WxH in the same memory layout
