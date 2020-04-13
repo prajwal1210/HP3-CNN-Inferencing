@@ -1,4 +1,4 @@
-#include <"fft.cu">
+#include "im2col.hpp"
 
 int main()
 {
@@ -54,9 +54,8 @@ int main()
    float* kernel_cuda = NULL; cudaMalloc((void **)&kernel_cuda, out_size* channel * kernel_height* kernel_width * sizeof(float));
    cudaMemcpy(input_layer_cuda, input_layer_tmp , batch_size * channel * height* width * sizeof(float) ,cudaMemcpyHostToDevice);
    cudaMemcpy(kernel_cuda, kernel_tmp , out_size *channel * kernel_height* kernel_width * sizeof(float) ,cudaMemcpyHostToDevice);
-   
  
-   float* final_output =  forward(out_size, channel, kernel_height, kernel_width, pad, stride, kernel_cuda, batch_size, height, width, input_layer_cuda);
+   float* final_output =  IM2COL::forward(out_size, channel, kernel_height, kernel_width, pad, stride, kernel_cuda, batch_size, height, width, input_layer_cuda);
    for(int l = 0; l < batch_size; l++)
     {
       for(int i = 0; i < out_size; i++)

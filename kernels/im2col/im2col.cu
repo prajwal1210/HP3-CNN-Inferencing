@@ -88,7 +88,7 @@ void im2col_gemm_gpu(const float * data_im, const float * data_ker,
 	CUBLAS_CHECK(ret, "cublas Sgemm returned an error!\n");
 }
 
-float * im2colWithCuda(const float * data_im, const float * data_ker, const int batch,
+float * im2colWithCuda(const float * dev_image, const float * dev_kernel, const int batch,
 					   const int kh, const int kw, const int pad, const int stride,
 					   const int ih, const int iw, const int ic, const int oc)
 {
@@ -110,15 +110,15 @@ float * im2colWithCuda(const float * data_im, const float * data_ker, const int 
 	ssize_t output_feature = oc * hcol * wcol;	
 	ssize_t result_size = batch * output_feature;
 	
-	// image
-	float * dev_image = nullptr;
-	CUDA_CHECK(cudaMalloc((void**)&dev_image, images_size * sizeof(float)));
-	CUDA_CHECK(cudaMemcpy(dev_image, data_im, images_size * sizeof(float), cudaMemcpyHostToDevice));
+	// // image
+	// float * dev_image = nullptr;
+	// CUDA_CHECK(cudaMalloc((void**)&dev_image, images_size * sizeof(float)));
+	// CUDA_CHECK(cudaMemcpy(dev_image, data_im, images_size * sizeof(float), cudaMemcpyHostToDevice));
 	
-	// kernel
-	float * dev_kernel = nullptr;
-	CUDA_CHECK(cudaMalloc((void**)&dev_kernel, kernels_size * sizeof(float)));
-	CUDA_CHECK(cudaMemcpy(dev_kernel, data_ker, kernels_size * sizeof(float), cudaMemcpyHostToDevice));
+	// // kernel
+	// float * dev_kernel = nullptr;
+	// CUDA_CHECK(cudaMalloc((void**)&dev_kernel, kernels_size * sizeof(float)));
+	// CUDA_CHECK(cudaMemcpy(dev_kernel, data_ker, kernels_size * sizeof(float), cudaMemcpyHostToDevice));
 
 	// col
 	float * dev_col = nullptr;
