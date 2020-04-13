@@ -55,25 +55,6 @@ int main()
    cudaMemcpy(input_layer_cuda, input_layer_tmp , batch_size * channel * height* width * sizeof(float) ,cudaMemcpyHostToDevice);
    cudaMemcpy(kernel_cuda, kernel_tmp , out_size *channel * kernel_height* kernel_width * sizeof(float) ,cudaMemcpyHostToDevice);
  
-/*
-  float* ker_ptr = (float *)malloc(out_size *channel * kernel_height* kernel_width * sizeof(float));
-	CUDA_CHECK(cudaMemcpy(ker_ptr, kernel_cuda, out_size *channel * kernel_height* kernel_width*sizeof(float), cudaMemcpyDeviceToHost));
- for(int k = 0; k < out_size; k++)
-	{
-	for(int l = 0; l < channel; l++)
-	{
-	  for(int i = 0; i < kernel_height; i++)
-	  {
-		for(int j = 0; j < kernel_width; j++)
-		  std::cout << ker_ptr[k * channel * kernel_height * kernel_width + l * kernel_height * kernel_width + i * kernel_width + j] << " ";	
-		printf("\n");
-	  }
-	  printf("\n");
-	}
-  printf("\n\n");
-  }
-	free(ker_ptr);
- */
 
    float* final_output =  IM2COL::forward(out_size, channel, kernel_height, kernel_width, pad, stride, kernel_cuda, batch_size, height, width, input_layer_cuda);
    for(int l = 0; l < batch_size; l++)

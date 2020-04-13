@@ -48,22 +48,6 @@ void im2col_gemm_gpu(const float * data_im, const float * data_ker, cublasHandle
 	int hcol = (ih + 2 * pad - kh) / stride + 1;
 	int wcol = (iw + 2 * pad - kw) / stride + 1;
 
-	/*
-  float* im_ptr = (float *)malloc(ic * ih * iw * sizeof(float));
-	CUDA_CHECK(cudaMemcpy(im_ptr, data_im, ic*ih*iw*sizeof(float), cudaMemcpyDeviceToHost));
-	for(int l = 0; l < ic; l++)
-	{
-	  for(int i = 0; i < ih; i++)
-	  {
-		for(int j = 0; j < iw; j++)
-		  std::cout << im_ptr[l * ih * iw + i * iw + j] << " ";	
-		printf("\n");
-	  }
-	  printf("\n\n");
-	}
-	free(im_ptr);
- */
-
 	// We are going to launch ic * hcol * wcol kernels threads for im2col,
 	// each thread is responsible for copying a single-channel grid
 	// one thread per output pixel in the output of conv
@@ -71,28 +55,6 @@ void im2col_gemm_gpu(const float * data_im, const float * data_ker, cublasHandle
 	im2col_kernel<<<GET_BLOCKS(op_size), CUDA_NUM_THREADS>>>(
 		data_im, data_col, op_size, kh, kw, pad, stride, ih, iw, ic, hcol, wcol);
 	CUDA_POST_KERNEL_CHECK; // check if there was any error
-
-/*
-	float* im2col_ptr = (float *)malloc(ic * kh * kw * hcol * wcol * sizeof(float));
-	CUDA_CHECK(cudaMemcpy(im2col_ptr, data_col, ic*kh*kw*hcol*wcol*sizeof(float), cudaMemcpyDeviceToHost));
-	
-	  for(int i = 0; i < hcol; i++)
-	  {
-		for(int j = 0; j < wcol; j++)
-		{
-      for(int l = 0; l < ic; l++)
-	{
-		  for (int k = 0; k < kh * kw; k++)
-		  	std::cout << im2col_ptr[hcol * wcol * l * kh * kw + i * wcol + j + k * hcol * wcol] << " ";
-		  printf("\n");
-		}	
-		printf("\n");
-	  }
-	  printf("\n");
-	}
-	free(im2col_ptr);
-	std::exit(EXIT_SUCCESS);
- */
 
 	// now, the col form shall be multiplied with the kernels laid out straight i.e. (ic * kh * kw)
 	// so, since, oc is the number of kernels, we get:
@@ -104,26 +66,6 @@ void im2col_gemm_gpu(const float * data_im, const float * data_ker, cublasHandle
 	// in sumamary, we do matmul(kernel flatten, im2col(im_input)) -> conv_output (in "correct" form)
 
 	// Step 2: GEMM using libcublas
-
-/*
-  float* ker_ptr = (float *)malloc(oc * ic * kh * kw * sizeof(float));
-	CUDA_CHECK(cudaMemcpy(ker_ptr, data_ker, oc * ic * kh * kw*sizeof(float), cudaMemcpyDeviceToHost));
- for(int k = 0; k < oc; k++)
-	{
-	for(int l = 0; l < ic; l++)
-	{
-	  for(int i = 0; i < kh; i++)
-	  {
-		for(int j = 0; j < kw; j++)
-		  std::cout << ker_ptr[k * ic * kh * kw + l * kh * kw + i * kw + j] << " ";	
-		printf("\n");
-	  }
-	  printf("\n");
-	}
-  printf("\n\n");
-  }
-	free(ker_ptr);
-*/
 
 	// get params ready for GEMM call
 	const float alpha = 1.0f;
