@@ -56,6 +56,25 @@ void im2col_gemm_gpu(const float * data_im, const float * data_ker, cublasHandle
 		data_im, data_col, op_size, kh, kw, pad, stride, ih, iw, ic, hcol, wcol);
 	CUDA_POST_KERNEL_CHECK; // check if there was any error
 
+	float* im2col_ptr = malloc(ic * kh * kw * hcol * wcol * sizeof(float));
+	CUDA_CHECK(cudaMemcpy(im2col_ptr, data_col, ic*kh*kw*hcol*wcol*sizeof(float), cudaMemcpyDeviceToHost);
+	for(int l = 0; l < oc; l++)
+	{
+	  for(int i = 0; i < hcol; i++)
+	  {
+		for(int j = 0; j < wcol; j++)
+		{
+		  for (int k = 0; k < kh * kw; ++k)
+			std::cout << im2col_ptr[hcol * wcol * l * kh * kw + i * wcol + j + k * hcol * wcol] << " ";
+		  printf("\n");
+		}	
+		printf("\n");
+	  }
+	  printf("\n");
+	}
+	free(im2col_ptr);
+	std::exit(EXIT_SUCCESS);
+
 	// now, the col form shall be multiplied with the kernels laid out straight i.e. (ic * kh * kw)
 	// so, since, oc is the number of kernels, we get:
 	// "2D kernel matrix" oc x (ic * kh * kw)
@@ -85,7 +104,7 @@ void im2col_gemm_gpu(const float * data_im, const float * data_ker, cublasHandle
 	cublasStatus_t ret =
 		cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, m, n, k, &alpha,
 					data_col, ldA, data_ker, ldB, &beta, data_out, ldC);
-	CUBLAS_CHECK(ret, "cublas Sgemm returned an error!\n");
+	CUBLAS_CHECK(ret, "cublas Sgemm returned an error!");
 }
 
 float * im2colWithCuda(const float * dev_image, const float * dev_kernel, const int batch,
