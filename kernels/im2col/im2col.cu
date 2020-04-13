@@ -134,9 +134,9 @@ float * im2colWithCuda(const float * dev_image, const float * dev_kernel, const 
 
 	// loop over the batch
 	const float * t_dev_image = dev_image;
-	const float * t_dev_col = dev_col;
-	const float * t_dev_ret = dev_ret;
-	for(int i = 0; i < batch_size; i++)
+	float * t_dev_col = dev_col;
+	float * t_dev_ret = dev_ret;
+	for(int i = 0; i < batch; i++)
 	{
 		// Launch GPU kernel to work on each image
 		im2col_gemm_gpu(t_dev_image, dev_kernel, handle, kh, kw, pad, 
@@ -148,7 +148,7 @@ float * im2colWithCuda(const float * dev_image, const float * dev_kernel, const 
 	}
 
 	// cuBLAS finalize
-	CUBLAS_CHECK(cublasDestroy(handle);, "cublasDestroy() error!");
+	CUBLAS_CHECK(cublasDestroy(handle), "cublasDestroy() error!");
 	
 	// Check for any errors launching the kernel
 	CUDA_CHECK(cudaGetLastError());
@@ -171,9 +171,9 @@ float * im2colWithCuda(const float * dev_image, const float * dev_kernel, const 
 	float * data_ret = (float *)malloc(result_size * sizeof(float));
 	CUDA_CHECK(cudaMemcpy(data_ret, dev_ret, result_size * sizeof(float), cudaMemcpyDeviceToHost));
 
-	cudaFree(dev_image);
+	// cudaFree(dev_image);
 	cudaFree(dev_col);
-	cudaFree(dev_kernel);
+	// cudaFree(dev_kernel);
 	cudaFree(dev_ret);
 	
 	// sdkDeleteTimer(&timer);
