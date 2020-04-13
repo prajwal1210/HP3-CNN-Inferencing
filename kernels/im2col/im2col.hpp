@@ -14,7 +14,7 @@
 #define CUDA_CHECK(condition) {                              \
 	cudaError_t error = (condition);                         \
 	if (error != cudaSuccess) {                              \
-		std::cerr << "Error on line " << __LINE__ << ": "    \
+		std::cerr << "CUDA Error on line " << __LINE__ << ": "    \
 				  << cudaGetErrorString(error) << std::endl; \
       std::exit(EXIT_FAILURE);                               \
     }                                                        \
