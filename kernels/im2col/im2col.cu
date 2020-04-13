@@ -49,7 +49,7 @@ void im2col_gemm_gpu(const float * data_im, const float * data_ker, cublasHandle
 	int wcol = (iw + 2 * pad - kw) / stride + 1;
 
 	float* im_ptr = (float *)malloc(ic * ih * iw * sizeof(float));
-	CUDA_CHECK(cudaMemcpy(im2ptr, data_im, ic*ih*iw*sizeof(float), cudaMemcpyDeviceToHost));
+	CUDA_CHECK(cudaMemcpy(im_ptr, data_im, ic*ih*iw*sizeof(float), cudaMemcpyDeviceToHost));
 	for(int l = 0; l < ic; l++)
 	{
 	  for(int i = 0; i < ih; i++)
@@ -79,8 +79,8 @@ void im2col_gemm_gpu(const float * data_im, const float * data_ker, cublasHandle
 		for(int j = 0; j < wcol; j++)
 		{
 		  for (int k = 0; k < kh * kw; ++k)
-		  	std::cout << hcol * wcol * l * kh * kw + i * wcol + j + k * hcol * wcol << ": ";
-			std::cout << im2col_ptr[hcol * wcol * l * kh * kw + i * wcol + j + k * hcol * wcol] << " ";
+		  	std::cout << hcol * wcol * l * kh * kw + i * wcol + j + k * hcol * wcol << ": " <<
+					  << im2col_ptr[hcol * wcol * l * kh * kw + i * wcol + j + k * hcol * wcol] << " ";
 		  printf("\n");
 		}	
 		printf("\n");
