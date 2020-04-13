@@ -402,7 +402,7 @@ float* Conv2D::Conv_Im2Col(float* input, float &time_elapsed) {
 
   cudaEventRecord(start);
 
-  float* h_output = Im2Col::forward(this->out_channels, this->in_channels, this->h, this->w, this->padding, this->stride, this->weights,
+  float* h_output = IM2COL::forward(this->out_channels, this->in_channels, this->h, this->w, this->padding, this->stride, this->weights,
               this->batchsize, this->input_height, this->input_width, input);
 
   cudaEventRecord(stop);
