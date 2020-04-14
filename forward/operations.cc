@@ -171,8 +171,10 @@ float* Conv2D::Conv_CUDNN(float* input, profilingElapsedTime &time_elapsed) {
   float milliseconds = 0;
   cudaEventElapsedTime(&milliseconds, start, stop);
   time_elapsed.total = milliseconds;
-  time_elapsed.conv = milliseconds;
+  time_elapsed.conv = 0;
   time_elapsed.overhead = 0;
+
+  std::cout << "TIME ELAPSED - " << time_elapsed.total << std::endl;
 
   
   float* d_bias{nullptr};
@@ -427,7 +429,7 @@ float* Conv2D::Conv_Im2Col(float* input, profilingElapsedTime &time_elapsed) {
   cudaEventElapsedTime(&milliseconds, start, stop);
   time_elapsed.total = milliseconds;
   time_elapsed.conv = conv_time;
-  time_elapsed.overhead = overhead_time;
+  time_elapsed.overhead = overhead_time == 0? 0.01 : overhead_time;
 
   std::cout << "TIME ELAPSED - " << time_elapsed.total << " = "  << time_elapsed.conv << " + " << time_elapsed.overhead << std::endl;
 
