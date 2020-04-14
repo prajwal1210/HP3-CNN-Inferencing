@@ -203,7 +203,7 @@ __global__ void cutpad(float  *devY, float *devcutY, int oph,int opw)
     }
 }
     
-__global__ void tile(int bs, int p, int q, int ch, float *devin, float *devsum, float *devY, float *devU, int h, int w, int och, float *devfin)
+__global__ void tile(int bs, int p, int q, int ch, float *devin, float *devsum, float *devU, int h, int w, int och, float *devfin)
 {
     float thrtile[4][4];    
     int tbs, tp, tq, tch;
@@ -280,15 +280,26 @@ __global__ void tile(int bs, int p, int q, int ch, float *devin, float *devsum, 
                 for(int j = 0; j < 4; j++)
                     devsum[((((tbs*och+toch)*p+tp)*q+tq)*4 + i)*4 + j] = devfin[(((((tbs*p+tp)*q+tq)*ch+tch)*och+toch)*4+i)*4+j];
     }
-  if(tch == 0)
+  
+}
+
+__global__ void lastcal(int och, int p, int q, int bs, float *devsum, float *devY)
+{
+    int tbs, tp, tq, tch;
+    tbs = blockIdx.x;
+    tp = blockIdx.y;
+    tq = blockIdx.z;
+    tch = threadIdx.x;
+    if(tch == 0)
   {
       // amul(tbs, tp, tq, bs, och, p, q, devsum, devY);
       amulL(tbs, tp, tq, bs, och, p, q, devsum, devY);
       //cudaDeviceSynchronize();
   }
 }
-void tilehost(int och, int ch, int bs, int h, int w, int pad, float *devin, int oph, int opw, 
-    float *devU, float *cutY)
+
+void tilehost(int och, int ch, int bs, int h, int w, int pad, float *&devin, int oph, int opw, 
+    float *&devU, float *cutY)
 {
     
     int p = max((h-2)/2, 0);
@@ -309,7 +320,7 @@ void tilehost(int och, int ch, int bs, int h, int w, int pad, float *devin, int 
     gpu_error(cudaMalloc((void **) & devsum, sumsize));
 
     gpu_error(cudaMalloc((void **) & devfin, finsize));
-    gpu_error(cudaMalloc((void **) & devY, ysize));
+    
 
     // call the kernel function for precomputing
     
@@ -317,15 +328,18 @@ void tilehost(int och, int ch, int bs, int h, int w, int pad, float *devin, int 
     dim3 grid(bs, p, q);  // 3-D
     dim3 block(ch, 1, 1); // 1-D
     // call the kernel function for tiling
-    tile<<<grid, block>>>(bs, p, q, ch, devin, devsum, devY, devU, h, w, och, devfin);
-    cudaSafeCall(cudaGetLastError());
+    tile<<<grid, block>>>(bs, p, q, ch, devin, devsum, devU, h, w, och, devfin);
+    gpu_error(cudaFree(devfin));
+    gpu_error(cudaFree(devin));    
+    gpu_error(cudaFree(devU));
+
+    // cudaSafeCall(cudaGetLastError());
 
     //gpu_error(cudaFree(devout));
+    gpu_error(cudaMalloc((void **) & devY, ysize));
+    lastcal<<<grid,block>>>(och, p, q, bs, devsum, devY);
     gpu_error(cudaFree(devsum));
     
-
-    gpu_error(cudaFree(devfin));
-
     dim3 cutgrid(bs*och, p, q);
     dim3 cutblock(1,1,1);
     
@@ -473,9 +487,61 @@ float * WING::forward(int och, int ch, int bs, int h, int w, int pad, float *in,
     size_t cutsize = bs*och*oph*opw*sizeof(float);
     cutY = (float *)malloc(cutsize);
     // float *cuttempY = (float *)malloc(cuttempsize);
-    tilehost(och,ch,bs,h,w,pad,devin,oph,opw,devU,cutY);
+    //tilehost(och,ch,bs,h,w,pad,devin,oph,opw,devU,cutY);
+    float *devout, *devsum, *devY, *devcutY;
+    float *devfin;
+    //devout = devsum = nullptr;
+     int p = max((h-2)/2, 0);
+    int q = max((w-2)/2, 0);
+
+    size_t finsize = bs * p * q * ch * och * 4 * 4 * sizeof(float);
+   // size_t outsize = bs * och * p * q * ch * 4 * 4 * sizeof(float);
+    size_t sumsize = bs * och * p * q * 4 * 4 * sizeof(float);
+    size_t ysize = bs * och * p * q * 2 * 2 * sizeof(float);
+
+ 
+    //gpu_error(cudaMalloc((void **) & devout, outsize));
+    gpu_error(cudaMalloc((void **) & devsum, sumsize));
+
+    gpu_error(cudaMalloc((void **) & devfin, finsize));
+    
+
+    // call the kernel function for precomputing
+    
+    
+    dim3 grid(bs, p, q);  // 3-D
+    dim3 block(ch, 1, 1); // 1-D
+    // call the kernel function for tiling
+    tile<<<grid, block>>>(bs, p, q, ch, devin, devsum, devU, h, w, och, devfin);
+    gpu_error(cudaFree(devfin));
+    gpu_error(cudaFree(devin));    
+    gpu_error(cudaFree(devU));
+
+    // cudaSafeCall(cudaGetLastError());
+
+    //gpu_error(cudaFree(devout));
+    gpu_error(cudaMalloc((void **) & devY, ysize));
+    lastcal<<<grid,block>>>(och, p, q, bs, devsum, devY);
+    gpu_error(cudaFree(devsum));
+    
+    dim3 cutgrid(bs*och, p, q);
+    dim3 cutblock(1,1,1);
+    
+    //size_t cutsize = bs*och*oph*opw*sizeof(float);
+    
+    gpu_error(cudaMalloc((void **) & devcutY, cutsize));
+    cutpad<<<cutgrid, cutblock>>> (devY, devcutY, oph, opw);   
+    gpu_error(cudaFree(devY));
+    // copy from device to host.
+    //delete in;
+    // cutY = (float *)malloc(cutsize);
+
+    cudaSafeCall(cudaMemcpy(cutY, devcutY, cutsize, cudaMemcpyDeviceToHost));
+    
+    gpu_error(cudaFree(devcutY));
     // LOOP(och)
-    // {
+    // {    cout << sizeof(float) << endl;
+
     //     ucopy<<<1,ch>>>(devtempU, devU, toch, n1, n2, ch);     
     //     tilehost(1,ch,bs,h,w,pad,devin,oph,opw,devtempU,cuttempY);
     //     LOOP(bs)
@@ -486,9 +552,7 @@ float * WING::forward(int och, int ch, int bs, int h, int w, int pad, float *in,
     // free(cuttempY);
 
     // gpu_error(cudaFree(devtempU));    
-    gpu_error(cudaFree(devin));    
-    gpu_error(cudaFree(devU));
-
+    
     return cutY;
 
 }
