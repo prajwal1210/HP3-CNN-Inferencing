@@ -67,21 +67,23 @@ __global__ void pointwise_product(cufftComplex* d_outA, cufftComplex* d_outB, fl
 /*flip filter about the center element
  * <<H,W,D>>
  */
- __global__ void flip_filer(float* f_in, float* f_out, int H, int W, int D)
+ __global__ void flip_filer(float* f_in, float* f_out, int H, int W, int D, int out_size)
 {
   int col = blockIdx.x*blockDim.x+threadIdx.x;
   int row = blockIdx.y*blockDim.y+threadIdx.y;
   int dep = blockIdx.z*blockDim.z+threadIdx.z;
-  int i = dep * H * W + col * W + row ;
 
   int new_col = H - col -1;
   int new_row = W - row - 1;
   int new_dep = D - dep - 1;
 
-  int j = new_dep * H * W + new_col * W + new_row;
-
   if(col < H && row < W && dep < D) {
+    for(int itr = 0; itr < out_size; itr++)  
+    {  
+      int i = itr * D * H * W + dep * H * W + col * W + row ;
+      int j = itr * D * H * W + new_dep * H * W + new_col * W + new_row;
       f_out[j] = f_in[i];
+    }
   }
 }
 
@@ -91,12 +93,11 @@ __global__ void pointwise_product(cufftComplex* d_outA, cufftComplex* d_outB, fl
  *new_filter[RHS] = old_filter[LHS]
  * <<H,W,D>>
  */
-__global__ void align_filer(float* f_in, float* f_out, int H, int W, int D)
+__global__ void align_filer(float* f_in, float* f_out, int H, int W, int D, int out_size)
 {
   int col = blockIdx.x*blockDim.x+threadIdx.x;
   int row = blockIdx.y*blockDim.y+threadIdx.y;
   int dep = blockIdx.z*blockDim.z+threadIdx.z;
-  int i = dep * H * W + col * W + row;
 
   int new_col = ((col - H/2) % H);
   int new_row = ((row - W/2) % W);
@@ -106,10 +107,13 @@ __global__ void align_filer(float* f_in, float* f_out, int H, int W, int D)
   new_row = new_row < 0 ? W + new_row: new_row;
   new_dep = new_dep < 0 ? D + new_dep: new_dep;
 
-  int j = new_dep * H * W + new_col * W + new_row;
-
   if(col < H && row < W && dep < D) {
-    f_out[j] = f_in[i];
+    for(int itr = 0; itr < out_size; itr++)  
+    {
+      int i = itr * D * H * W + dep * H * W + col * W + row;
+      int j = itr * D * H * W + new_dep * H * W + new_col * W + new_row;
+      f_out[j] = f_in[i];
+    }
   }
 }
 
@@ -118,58 +122,56 @@ __global__ void align_filer(float* f_in, float* f_out, int H, int W, int D)
  * or to pad the input when required
  *<H+2*pad, W+2*pad,D>
  */
-__global__ void pad_input(float* f_in, float* f_out, int H, int W, int D, int pad_front, int pad_back) {
+
+__global__ void pad_input_(float* f_in, float* f_out, int H, int W, int D, int pad_front, int pad_back, int BS) {
   int col = blockIdx.x*blockDim.x+threadIdx.x;
   int row = blockIdx.y*blockDim.y+threadIdx.y;
   int dep = blockIdx.z*blockDim.z+threadIdx.z;
 
   int new_H = H+ pad_front + pad_back; int new_W = W + pad_front + pad_back; 
 
-  int i = dep * new_H * new_W + col * new_W + row;
-  int j = dep * H * W + (col - pad_front) *W+ (row - pad_front) ;
+  if(col < new_H && row < new_W && dep < D) 
+  {
+    for(int itr = 0; itr < BS; itr++)
+    {
+        int i = itr * D * new_H * new_W + dep * new_H * new_W + col * new_W + row;
+        int j = itr * D * H * W + dep * H * W + (col - pad_front) *W+ (row - pad_front) ;
 
-  if(col < new_H && row < new_W && dep < D) {
-    if((col < pad_front || col > H+pad_front-1) || (row < pad_front || row > W+pad_front-1)) f_out[i] = 0;
-    else f_out[i] = f_in[j];
+        if((col < pad_front || col > H+pad_front-1) || (row < pad_front || row > W+pad_front-1)) f_out[i] = 0;
+        else f_out[i] = f_in[j];  
+    }
   }
 }
 
-/* Croping the required output from the complete (padded) output
+/* Croping and striding the required output from the complete (padded) output
  * <H,W,1>, <256>
  */
-__global__ void crop(float* f_in, float* f_out, int H, int W, int O_H, int O_W, int D) {
+__global__ void crop_and_stride(float* f_in, float* f_out, int H, int W, int nos_oH, int nos_oW, int D, int stride, int out_size) {
   int col = blockIdx.x*blockDim.x+threadIdx.x;
   int row = blockIdx.y*blockDim.y+threadIdx.y;
-  int i =  ((D-1)/2) * H * W + col * W + row;
+  int batch = blockIdx.z*blockDim.z+threadIdx.z;
+  int i =  batch*D*H*W + ((D-1)/2) * H * W + col * W + row;
   
-  int crop_H_b = (H - O_H)/2; int crop_H_f;
-  int crop_W_b = (W - O_W)/2; int crop_W_f;
-  if((H - O_H) % 2 == 0) crop_H_f = crop_H_b; else crop_H_f = crop_H_b + 1;
-  if((W - O_W) % 2 == 0) crop_W_f = crop_W_b; else crop_W_f = crop_W_b + 1;
+  int crop_H_b = (H - nos_oH)/2; int crop_H_f;
+  int crop_W_b = (W - nos_oW)/2; int crop_W_f;
+  if((H - nos_oH) % 2 == 0) crop_H_f = crop_H_b; else crop_H_f = crop_H_b + 1;
+  if((W - nos_oW) % 2 == 0) crop_W_f = crop_W_b; else crop_W_f = crop_W_b + 1;
 
-  int j = (col - crop_H_f) * O_W+ (row - crop_W_f);
+  int j = batch * nos_oH * nos_oW + (col - crop_H_f) * nos_oW+ (row - crop_W_f);
 
-  if(col < H && row < W) {
-      if(col >= crop_H_f && col < H - crop_H_b && row >= crop_W_f && row < W - crop_W_b)f_out[j] = f_in[i];
-  }
-}
-
-
-/*stride and output the required size output (O = ((W - k + 2 * P)/stride) + 1)
- *call this only if stride is not 1
- *<<H, W, 1>>
- */
-__global__ void stride_(float* f_in, float* f_out, int H, int W, int stride) {
-  int col = blockIdx.x*blockDim.x+threadIdx.x;
-  int row = blockIdx.y*blockDim.y+threadIdx.y;
-
-  int O_W = W/stride + 1;
-  
-  int i = col * W + row; 
-
-  if(col < H && row < W && (col%stride == 0) && (row%stride == 0)) {
-      int j = (col/stride) * O_W + (row/stride) ;
-      f_out[j] = f_in[i];
+  if(col < H && row < W && batch < out_size) {
+      if(col >= crop_H_f && col < H - crop_H_b && row >= crop_W_f && row < W - crop_W_b)
+      {
+        if(stride == 1)f_out[j] = f_in[i];
+        else 
+        {    
+          if(((col - crop_H_f)%stride) == 0 && ((row - crop_W_f)%stride == 0))
+          {
+              j = batch * (nos_oH/stride + 1) * (nos_oW/stride + 1) + (((col - crop_H_f)/stride) * (nos_oW/stride + 1)) + ((row - crop_W_f)/stride);
+              f_out[j] = f_in[i];
+          }
+        }
+      }
   }
 }
 
@@ -183,12 +185,13 @@ float* conv_operation(float* filter_align, float* input_layer_pad, int H, int W,
   cudaEvent_t start, stop;
   cudaEventCreate(&start);
   cudaEventCreate(&stop);
+  cudaError_t err = cudaSuccess;
 
-  int new_OS = OS+1;
+  int new_OS = OS + 1;
   int N[3] = {D,H,W};
   cufftReal* d_inA;
   cufftComplex *d_outA, *d_outB;
-  cufftHandle fwplanA, bwplan;
+  cufftHandle bwplan;
   size_t real_size = new_OS * D* W * H * sizeof(cufftReal);
   size_t complex_size = new_OS * D * H * (W/2 + 1) * sizeof(cufftComplex);
 
@@ -199,18 +202,21 @@ float* conv_operation(float* filter_align, float* input_layer_pad, int H, int W,
   
   cudaMemset(d_inA,0,real_size);
   cudaMemset(d_outB,0,complex_size);
+  cudaMemset(d_outA,0,complex_size);
 
-  float * input_in = (float *)malloc(real_size);
+  //float * input_in = (float *)malloc(real_size);
   for(int  i = 0; i < new_OS; i++) {
-      cudaMemcpy(&input_in[i * D * H * W], input_layer_pad,  D* W * H * sizeof(cufftReal),  cudaMemcpyHostToHost);
+      err = cudaMemcpy(&d_outA[i * D * (H/2 + 1) * W], input_layer_pad,  D * H * (W/2 + 1) * sizeof(cufftComplex),  cudaMemcpyHostToDevice);
+      if (err != cudaSuccess)
+      {
+          fprintf(stderr, "Failed to copy vector into d_outA(error code %s)!\n", cudaGetErrorString(err));
+          exit(EXIT_FAILURE);
+      }
   }
-
-  cudaMemcpy(d_inA, input_in, real_size,  cudaMemcpyHostToDevice);
-  free(input_in);
   
   /* Make the plans for filter and inverse of output */
   cudaEventRecord(start);
-  cufftSafeCall(cufftPlanMany(&fwplanA, 3, N, NULL, 0,0,NULL,0,0, CUFFT_R2C ,new_OS));
+  //cufftSafeCall(cufftPlanMany(&fwplanA, 3, N, NULL, 0,0,NULL,0,0, CUFFT_R2C ,new_OS));
   cufftSafeCall(cufftPlanMany(&bwplan, 3, N, NULL, 0,0,NULL,0,0, CUFFT_C2R ,new_OS));
   cudaEventRecord(stop);
 
@@ -221,12 +227,14 @@ float* conv_operation(float* filter_align, float* input_layer_pad, int H, int W,
   conv_time += milliseconds;
   
   /* FFT on the filter */
-  cudaEventRecord(start);
-  cufftSafeCall(cufftExecR2C(fwplanA, d_inA, d_outA));
-  cudaEventRecord(stop);
-  cudaMemcpy(d_outB, filter_align, (OS) * D * H * (W/2 + 1) * sizeof(cufftComplex), cudaMemcpyHostToDevice); 
+  err = cudaMemcpy(d_outB, filter_align, (OS) * D * H * (W/2 + 1) * sizeof(cufftComplex), cudaMemcpyHostToDevice);
+  if (err != cudaSuccess)
+  {
+      fprintf(stderr, "Failed to copy vector into d_outB(error code %s)!\n", cudaGetErrorString(err));
+      exit(EXIT_FAILURE);
+  } 
 
-  cudaEventSynchronize(stop);
+  //cudaEventSynchronize(stop);
   milliseconds = 0;
   cudaEventElapsedTime(&milliseconds, start, stop);
   conv_time += milliseconds;
@@ -248,10 +256,6 @@ float* conv_operation(float* filter_align, float* input_layer_pad, int H, int W,
   cudaEventRecord(start);
   cufftSafeCall(cufftExecC2R(bwplan, d_outA, d_inA));
   cudaEventRecord(stop);
-  
-
-  float* result1 = (float*)malloc((OS) * D * H * W * sizeof(float));
-  cudaMemcpy(result1, d_inA, (OS) * D * H * W * sizeof(float), cudaMemcpyDeviceToHost);
 
   cudaEventSynchronize(stop);
   milliseconds = 0;
@@ -260,18 +264,16 @@ float* conv_operation(float* filter_align, float* input_layer_pad, int H, int W,
   
 
   /* Free the GPU */
-  cudaFree(d_inA); 
-  
   cudaFree(d_outA); 
   cudaFree(d_outB);
   
-  cufftDestroy(fwplanA);
+  //cufftDestroy(fwplanA);
   cufftDestroy(bwplan);
 
   cudaEventDestroy(start);
   cudaEventDestroy(stop);
   
-  return result1;
+  return d_inA;
 }
 
 /* input arguments are input_layer, padding, stride, batch_size, input_layer dimensions
@@ -290,38 +292,85 @@ float* pre_processinput(float* input_layer, int pad, int  batch_size, int* il_di
   
   /* pad input */
   int new_H = H+2*pad; int new_W = W+2*pad;
-  float *input_layer_pad = (float *)malloc(BS * D * new_H* new_W *sizeof(float));
-  float *pad_input_in = NULL; cudaMalloc((void **)&pad_input_in, H * W * D * sizeof(float));
-  float *pad_input_out = NULL; cudaMalloc((void **)&pad_input_out, new_H * new_W * D * sizeof(float));  
+  //float *input_layer_pad = (float *)malloc(BS * D * new_H* new_W *sizeof(float));
+  float *pad_input_in = NULL; cudaMalloc((void **)&pad_input_in, BS * H * W * D * sizeof(float));
+  float *pad_input_out = NULL; cudaMalloc((void **)&pad_input_out, BS * new_H * new_W * D * sizeof(float));  
 
-  for(int i = 0; i < BS; i++) {
-    cudaMemcpy(pad_input_in, &input_layer[i * D * H * W], H * W * D * sizeof(float) , cudaMemcpyHostToDevice);
-    
-    dim3 threads1(8,8,8);
-    dim3 grid1(ceil(new_H/8.0f),ceil(new_W/8.0f),ceil(D/8.0f));
-
-    cudaEventRecord(start);
-    pad_input<<<grid1,threads1>>>(pad_input_in, pad_input_out, H,W,D,pad, pad);
-    cudaEventRecord(stop);    
-    
-    err = cudaGetLastError(); if(err!=cudaSuccess){fprintf(stderr, "Failed to launch pad input (error code %s)!\n", cudaGetErrorString(err)); exit(EXIT_FAILURE);}
-    
-    cudaMemcpy(&input_layer_pad[i * D * new_H * new_W], pad_input_out , new_H * new_W * D * sizeof(float), cudaMemcpyDeviceToHost);
-
-    cudaEventSynchronize(stop);
-    milliseconds = 0;
-    cudaEventElapsedTime(&milliseconds, start, stop);
-    overhead_time += milliseconds;
+  
+  err = cudaMemcpy(pad_input_in, input_layer, BS * H * W * D * sizeof(float) , cudaMemcpyHostToDevice);
+  if (err != cudaSuccess)
+  {
+      fprintf(stderr, "Failed to copy vector into pad_input_in(error code %s)!\n", cudaGetErrorString(err));
+      exit(EXIT_FAILURE);
   }
-  cudaFree(pad_input_in); cudaFree(pad_input_out);
+  
+  dim3 threads1(8,8,8);
+  dim3 grid1(ceil(new_H/8.0f),ceil(new_W/8.0f),ceil(D/8.0f));
+
+  cudaEventRecord(start);
+  pad_input_<<<grid1,threads1>>>(pad_input_in, pad_input_out, H,W,D,pad, pad, BS);
+  cudaEventRecord(stop);    
+  
+  err = cudaGetLastError(); if(err!=cudaSuccess){fprintf(stderr, "Failed to launch pad input (error code %s)!\n", cudaGetErrorString(err)); exit(EXIT_FAILURE);}
+
+  cudaEventSynchronize(stop);
+  milliseconds = 0;
+  cudaEventElapsedTime(&milliseconds, start, stop);
+  overhead_time += milliseconds;
+  
+  cudaFree(pad_input_in); 
+  //cudaFree(pad_input_out);
+  
+  H = new_H; W = new_W;
+  int N[3] = {D,H, W};
+  
+  cufftComplex* d_input_complex;
+  cufftHandle fwplan_input;
+  //size_t real_size = BS * D* W * H * sizeof(cufftReal);
+  size_t complex_size = BS * D * W * (H/2 + 1) * sizeof(cufftComplex);
+
+  float* complex_input = (float*)malloc(complex_size);
+
+  cudaMalloc((void**)&d_input_complex, complex_size);
+  
+  cudaEventRecord(start);
+  cufftSafeCall(cufftPlanMany(&fwplan_input, 3, N, NULL, 0,0,NULL,0,0, CUFFT_R2C ,BS));
+  cudaEventRecord(stop);
+
+  cudaEventSynchronize(stop);
+  milliseconds = 0;
+  cudaEventElapsedTime(&milliseconds, start, stop);
+  conv_time += milliseconds;
+
+
+  cudaEventRecord(start);
+  cufftSafeCall(cufftExecR2C(fwplan_input, pad_input_out, d_input_complex));
+  cudaEventRecord(stop);
+  
+  err = cudaMemcpy(complex_input, d_input_complex , complex_size, cudaMemcpyDeviceToHost);
+  if (err != cudaSuccess)
+  {
+      fprintf(stderr, "Failed to copy vector into complex_input(error code %s)!\n", cudaGetErrorString(err));
+      exit(EXIT_FAILURE);
+  }
+
+  cudaEventSynchronize(stop);
+  milliseconds = 0;
+  cudaEventElapsedTime(&milliseconds, start, stop);
+  conv_time += milliseconds;
+
+  cudaFree(pad_input_out); 
+  cudaFree(d_input_complex);
+  cufftDestroy(fwplan_input);
+
   cudaEventDestroy(start);
   cudaEventDestroy(stop);
 
-  return input_layer_pad;
+  return complex_input;
 }
 
 
-float* pre_process_filter(float* kernel, int pad, int* il_dim, int* kernel_dim, float& conv_time, float& overhead_time)
+float* pre_process_filter(float* kernel, int pad, int* il_dim, int* kernel_dim, int out_size, float& conv_time, float& overhead_time)
 {
     int H = il_dim[0], W = il_dim[1], D = il_dim[2];
     int fH = kernel_dim[0], fW = kernel_dim[1] , fD = kernel_dim[2];
@@ -336,15 +385,20 @@ float* pre_process_filter(float* kernel, int pad, int* il_dim, int* kernel_dim, 
     cudaEventCreate(&stop);
 
     /*flip filter */
-    float *f_A = NULL; cudaMalloc((void **)&f_A, fH * fW * fD * sizeof(float));
-    float *f_B = NULL; cudaMalloc((void **)&f_B, fH * fW * fD * sizeof(float));
-    cudaMemcpy(f_A, kernel , fH * fW * fD * sizeof(float), cudaMemcpyHostToDevice);
+    float *f_A = NULL; cudaMalloc((void **)&f_A, out_size * fH * fW * fD * sizeof(float));
+    float *f_B = NULL; cudaMalloc((void **)&f_B, out_size * fH * fW * fD * sizeof(float));
+    err = cudaMemcpy(f_A, kernel , out_size * fH * fW * fD * sizeof(float), cudaMemcpyHostToDevice);
+    if (err != cudaSuccess)
+  {
+      fprintf(stderr, "Failed to copy vector into f_A(error code %s)!\n", cudaGetErrorString(err));
+      exit(EXIT_FAILURE);
+  }
 
     dim3 threads0(8,8,8);
     dim3 grid0(ceil(fH/8.0f),ceil(fW/8.0f),ceil(fD/8.0f));
 
     cudaEventRecord(start);
-    flip_filer<<<grid0, threads0>>>(f_A, f_B, fH,fW,fD);
+    flip_filer<<<grid0, threads0>>>(f_A, f_B, fH,fW,fD, out_size);
     cudaEventRecord(stop);
 
     err = cudaGetLastError(); if(err!=cudaSuccess){fprintf(stderr, "Failed to launch align_filter(error code %s)!\n", cudaGetErrorString(err)); exit(EXIT_FAILURE);}
@@ -362,14 +416,14 @@ float* pre_process_filter(float* kernel, int pad, int* il_dim, int* kernel_dim, 
     int fpad; if((new_H - fH) % 2 == 0) fpad = bpad; else fpad = bpad + 1;  
     int new_fH = fH+fpad+bpad; int new_fW = fW+fpad+bpad;
     float *pad_filter_in = NULL;
-    float *pad_filter_out = NULL; cudaMalloc((void **)&pad_filter_out, new_fH * new_fW * D * sizeof(float));
+    float *pad_filter_out = NULL; cudaMalloc((void **)&pad_filter_out, out_size * new_fH * new_fW * D * sizeof(float));
 
     pad_filter_in = f_B;
     dim3 threads2(8,8,8);
     dim3 grid2(ceil(new_fH/8.0f),ceil(new_fW/8.0f),ceil(D/8.0f));
 
     cudaEventRecord(start);
-    pad_input<<<grid2,threads2>>>(pad_filter_in, pad_filter_out, fH,fW,D,fpad,bpad);
+    pad_input_<<<grid2,threads2>>>(pad_filter_in, pad_filter_out, fH,fW,D,fpad,bpad, out_size);
     cudaEventRecord(stop);
 
     err = cudaGetLastError(); if(err!=cudaSuccess){fprintf(stderr, "Failed to launch pad filter(error code %s)!\n", cudaGetErrorString(err)); exit(EXIT_FAILURE);}
@@ -382,24 +436,19 @@ float* pre_process_filter(float* kernel, int pad, int* il_dim, int* kernel_dim, 
     overhead_time += milliseconds;
     
     /* pad filter end */
-   
-    /* align filter begin */
-    float *filter_align = (float *)malloc(fH * fW * fD *sizeof(float));
     float *d_A = NULL;
-    float *d_B = NULL; cudaMalloc((void **)&d_B, fH * fW * fD * sizeof(float));
+    float *d_B = NULL; cudaMalloc((void **)&d_B, out_size * fH * fW * fD * sizeof(float));
     d_A = pad_filter_out;
 
     dim3 threads3(8,8,8);
     dim3 grid3(ceil(fH/8.0f),ceil(fW/8.0f),ceil(fD/8.0f));
 
     cudaEventRecord(start);
-    align_filer<<<grid3, threads3>>>(d_A, d_B, fH,fW,fD);
+    align_filer<<<grid3, threads3>>>(d_A, d_B, fH,fW,fD,out_size);
     cudaEventRecord(stop);
 
     err = cudaGetLastError(); if(err!=cudaSuccess){fprintf(stderr, "Failed to launch align_filter(error code %s)!\n", cudaGetErrorString(err)); exit(EXIT_FAILURE);}
-    
-    cudaMemcpy(filter_align, d_B, fH*fW*fD*sizeof(float), cudaMemcpyDeviceToHost);
-    cudaFree(d_A); cudaFree(d_B);
+    cudaFree(d_A); 
 
     cudaEventSynchronize(stop);
     milliseconds = 0;
@@ -407,55 +456,41 @@ float* pre_process_filter(float* kernel, int pad, int* il_dim, int* kernel_dim, 
     overhead_time += milliseconds;
     /* align filter end */
 
-    cudaEventDestroy(start);
-    cudaEventDestroy(stop);
-
-    return filter_align;
-
-}
-
-float* FFT_filter(float* filter_align, int OS, int H, int W, int D, float& conv_time, float& overhead_time)
-{
     int N[3] = {D ,H, W};
-    
-    float milliseconds = 0;
-    cudaEvent_t start, stop;
-    cudaEventCreate(&start);
-    cudaEventCreate(&stop);
-
-    cufftReal* d_input;
     cufftComplex* d_input_complex;
     cufftHandle fwplan_input;
-    size_t real_size = OS * D* W * H * sizeof(cufftReal);
-    size_t complex_size = OS * D * W * (H/2 + 1) * sizeof(cufftComplex);
+    //size_t real_size = out_size * D* W * H * sizeof(cufftReal);
+    size_t complex_size = out_size * D * W * (H/2 + 1) * sizeof(cufftComplex);
 
     float* complex_input = (float*)malloc(complex_size);
-
-    cudaMalloc((void**)&d_input, real_size);
     cudaMalloc((void**)&d_input_complex, complex_size);
-    cudaMemset(d_input,0,real_size);
-
-    cudaMemcpy(d_input, filter_align, real_size, cudaMemcpyHostToDevice);
     
     cudaEventRecord(start);
-    cufftSafeCall(cufftPlanMany(&fwplan_input, 3, N, NULL, 0,0,NULL,0,0, CUFFT_R2C ,OS));
-    cufftSafeCall(cufftExecR2C(fwplan_input, d_input, d_input_complex));
+    cufftSafeCall(cufftPlanMany(&fwplan_input, 3, N, NULL, 0,0,NULL,0,0, CUFFT_R2C ,out_size));
+    cufftSafeCall(cufftExecR2C(fwplan_input, d_B, d_input_complex));
     cudaEventRecord(stop);
     
-    cudaMemcpy(complex_input, d_input_complex , complex_size, cudaMemcpyDeviceToHost);  
+    err = cudaMemcpy(complex_input, d_input_complex , complex_size, cudaMemcpyDeviceToHost);  
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to copy vector into complex_input(error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
 
     cudaEventSynchronize(stop);
     milliseconds = 0;
     cudaEventElapsedTime(&milliseconds, start, stop);
     conv_time += milliseconds;
 
-    cudaFree(d_input); cudaFree(d_input_complex);
+    cudaFree(d_B);
+    cudaFree(d_input_complex);
     cufftDestroy(fwplan_input); 
 
     cudaEventDestroy(start);
     cudaEventDestroy(stop);
 
     return complex_input;
+
 }
 
 /* input arguments are input_layer, kernel, padding, stride, batch_size, input_layer dimensions, kernel dimensions
@@ -466,7 +501,7 @@ float* convolve_FFT(float* input_layer_pad, float * kernel, int pad, int stride,
                                                                               float& conv_time, float& overhead_time) {
   /* initializations */
   int H = il_dim[0], W = il_dim[1], D = il_dim[2]; 
-  int fH = kernel_dim[0], fW = kernel_dim[1] , fD = kernel_dim[2];
+  int fH = kernel_dim[0], fW = kernel_dim[1];
   cudaError_t err = cudaSuccess;
     
   int new_H = H+2*pad; int new_W = W+2*pad;
@@ -486,69 +521,39 @@ float* convolve_FFT(float* input_layer_pad, float * kernel, int pad, int stride,
   /* convolve end */
 
   /* crop output */
-  fH = kernel_dim[0]; fW = kernel_dim[1] ; fD = kernel_dim[2];
-  int oH = H - fH + 1; int oW = W - fW + 1;
+  fH = kernel_dim[0]; fW = kernel_dim[1] ;
+  int oH = (H - fH)/stride + 1; int oW = (W - fW)/stride + 1;
+  int nos_oH = (H - fH + 1); int nos_oW = W -fW + 1;
   float* result2 = (float*)malloc((out_size) * oW*oH* sizeof(float));
-  float *crop_out = NULL; 
-  err = cudaMalloc((void **)&crop_out, oH * oW * sizeof(float));
+  float *crop_out = NULL; err = cudaMalloc((void **)&crop_out, out_size * oH * oW * sizeof(float));
   if(err!=cudaSuccess){fprintf(stderr, "Failed to allocate memory crop_out (error code %s)!\n", cudaGetErrorString(err)); exit(EXIT_FAILURE);}
 
-  float *crop_in = NULL; 
-  err = cudaMalloc((void **)&crop_in, D * H * W * sizeof(float));  
-  if(err!=cudaSuccess){fprintf(stderr, "Failed to allocate memory crop_in (error code %s)!\n", cudaGetErrorString(err)); exit(EXIT_FAILURE);}
+  float *crop_in = NULL; crop_in = conv_result; 
 
-  for(int i = 0; i < out_size; i++) {
-    cudaMemcpy(crop_in, &conv_result[i * D * H * W],  D * H * W * sizeof(float),cudaMemcpyHostToDevice);
-    err = cudaGetLastError(); if(err!=cudaSuccess){fprintf(stderr, "Failed to copy(error code %s)!\n", cudaGetErrorString(err)); exit(EXIT_FAILURE);}
+  dim3 threads5(8,8,8);
+  dim3 grid5(ceil(H/8.0f),ceil(W/8.0f),ceil(out_size/8.0f));
+  //printf("%f %f %f\n", ceil(H/8.0f),ceil(W/8.0f),ceil(out_size/8.0f));
 
-    dim3 threads5(32,32,1);
-    dim3 grid5(ceil(H/32.0f),ceil(W/32.0f),1);
+  err =  cudaSuccess;
+  cudaEventRecord(start);
+  crop_and_stride<<<grid5, threads5>>>(crop_in, crop_out, H, W, nos_oH, nos_oW, D, stride, out_size);
+  cudaEventRecord(stop);
 
-    cudaEventRecord(start);
-    crop<<<grid5, threads5>>>(crop_in, crop_out, H, W, oH, oW, D);
-    cudaEventRecord(stop);
-
-    err = cudaGetLastError(); if(err!=cudaSuccess){fprintf(stderr, "Failed to launch crop(error code %s)!\n", cudaGetErrorString(err)); exit(EXIT_FAILURE);}
-    
-    cudaMemcpy(&result2[i*oW*oH], crop_out, oW*oH* sizeof(float) ,cudaMemcpyDeviceToHost);
-    cudaEventSynchronize(stop);
-    milliseconds = 0;
-    cudaEventElapsedTime(&milliseconds, start, stop);
-    conv_time += milliseconds;
+  err = cudaGetLastError(); if(err!=cudaSuccess){fprintf(stderr, "Failed to launch crop(error code %s)!\n", cudaGetErrorString(err)); exit(EXIT_FAILURE);}
+  
+  err = cudaMemcpy(result2, crop_out, out_size* oW*oH* sizeof(float) ,cudaMemcpyDeviceToHost);
+  if (err != cudaSuccess)
+  {
+      fprintf(stderr, "Failed to copy vector into result2(error code %s)!\n", cudaGetErrorString(err));
+      exit(EXIT_FAILURE);
   }
+  cudaEventSynchronize(stop);
+  milliseconds = 0;
+  cudaEventElapsedTime(&milliseconds, start, stop);
+  conv_time += milliseconds;
+  
   cudaFree(crop_in); cudaFree(crop_out);
-  free(conv_result);
   /* crop output end */
-
-  /* stride output stride_(float* f_in, float* f_out, int H, int W, int stride) */
-  if(stride != 1) {
-    int sH = oH / stride + 1; int sW = oW / stride + 1; 
-    float* result_s = (float *)malloc(out_size* sH*sW*sizeof(float));
-
-    for(int i = 0; i < out_size ; i++) {
-      float *stride_in = NULL; cudaMalloc((void **)&stride_in, oH * oW * sizeof(float));
-      float *stride_out = NULL; cudaMalloc((void **)&stride_out, sH * sW * sizeof(float));  
-      cudaMemcpy(stride_in, &result2[i * oW* oH], oW*oH* sizeof(float) ,cudaMemcpyHostToDevice);
-      dim3 threads6(32,32,1);
-      dim3 grid6(ceil(oH/32.0f),ceil(oW/32.0f),1);
-
-      cudaEventRecord(start);
-      stride_<<<grid6, threads6>>>(stride_in, stride_out ,oH, oW, stride);
-      cudaEventRecord(stop);
-
-      err = cudaGetLastError(); if(err!=cudaSuccess){fprintf(stderr, "Failed to launch stride(error code %s)!\n", cudaGetErrorString(err)); exit(EXIT_FAILURE);}
-      cudaMemcpy(&result_s[i*sH*sW], stride_out , sH * sW * sizeof(float) ,cudaMemcpyDeviceToHost);
-      cudaFree(stride_in); cudaFree(stride_out);
-
-      cudaEventSynchronize(stop);
-      milliseconds = 0;
-      cudaEventElapsedTime(&milliseconds, start, stop);
-      overhead_time += milliseconds;
-    }
-    free(result2);
-    result2 = result_s;
-  }
-  /* stride output end */
 
   cudaEventDestroy(start);
   cudaEventDestroy(stop);
@@ -559,7 +564,7 @@ float* convolve_FFT(float* input_layer_pad, float * kernel, int pad, int stride,
 float* FFT::forward(int out_size, int channel, int kernel_height, int kernel_width, int pad, int stride, float* kernel, 
                     int batch_size, int height, int width, float* input_layer_without_padding, float& conv_time, float& overhead_time) {
   int il_dim[3] = {height, width, channel}; int kernel_dim[3] = {kernel_height, kernel_width, channel};
-  cudaError_t err = cudaSuccess;
+  //cudaError_t err = cudaSuccess;
   int out_H = ((height - kernel_height + 2 * pad)/stride) + 1; 
   int out_W = ((width - kernel_width + 2 * pad)/stride) + 1; 
 
@@ -571,28 +576,15 @@ float* FFT::forward(int out_size, int channel, int kernel_height, int kernel_wid
   cudaEventCreate(&stop);
 
   int H = height+2*pad; int W = width+2*pad;
-  int bpad = (H - kernel_height)/2;
-  int fpad; if((H - kernel_height) % 2 == 0) fpad = bpad; else fpad = bpad + 1;  
-  int fH = kernel_height+fpad+bpad; int fW = kernel_width+fpad+bpad; int fD = channel;
 
-  float *filter_align = (float *)malloc(out_size* fH * fW * fD *sizeof(float));
-  for(int i = 0; i < out_size; i++)
-  {
-      float* each_filter = pre_process_filter(&kernel[i * channel * kernel_height * kernel_width], pad, il_dim, kernel_dim, conv_time, overhead_time);
-      err = cudaMemcpy(&filter_align[i * fH * fW * fD], each_filter, fH * fW * fD* sizeof(float), cudaMemcpyHostToHost);
-      if(err!=cudaSuccess){fprintf(stderr, "Failed to allocate filter_align(error code %s)!\n", cudaGetErrorString(err)); exit(EXIT_FAILURE);}
-      free(each_filter);
-  }
-
-  float* filter_complex = FFT_filter(filter_align, out_size, fH, fW, channel, conv_time, overhead_time); 
-  free(filter_align); 
+  float *filter_complex = pre_process_filter(kernel, pad, il_dim, kernel_dim, out_size, conv_time, overhead_time);
   float* input_layer_pad = pre_processinput(input_layer_without_padding, pad, batch_size, il_dim, conv_time, overhead_time);
   //BS * D * W * (H/2 + 1) * sizeof(cufftComplex)
 
   float* final_output = (float *)malloc(batch_size * out_size * out_H * out_W * sizeof(float)); 
   
   for(int l = 0; l < batch_size ; l++) {
-    float* actual_result = convolve_FFT(&input_layer_pad[l * channel * H * W], filter_complex, pad, stride, batch_size , il_dim, kernel_dim,
+    float* actual_result = convolve_FFT(&input_layer_pad[l * channel * (H/2 + 1) * W], filter_complex, pad, stride, batch_size , il_dim, kernel_dim,
                                         out_size, conv_time, overhead_time);
     
     cudaEventRecord(start);
