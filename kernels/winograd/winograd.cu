@@ -236,8 +236,10 @@ __global__ void tile(int bs, int p, int q, int ch, float *devin, float *devout, 
       cudaDeviceSynchronize();
   }
 }
-float * WING::forward(int och, int ch, int bs, int h, int w, int pad, float *in, int &oph, int &opw, float *kwt)
+float * WING::forward(int och, int ch, int bs, int h, int w, int pad, float *in, int &oph, int &opw, float *kwt, float& conv_time, float& overhead_time)
 {
+    conv_time = 0;
+    overhead_time = 0;
     float *devin, *devinnopad, *cutY;
     int insize = bs * ch * h * w * sizeof(float);
     int newh, neww;

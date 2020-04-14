@@ -304,6 +304,9 @@ __global__ void ucopy(float *devtempU, float *devU, int toch, int n1, int n2, in
 
 float * WING::forward(int och, int ch, int bs, int h, int w, int pad, float *in, int &oph, int &opw, float *kwt, float& conv_time, float& overhead_time)
 {
+    conv_time = 0;
+    overhead_time = 0;
+
     float *devin, *devinnopad, *cutY, *devkwt, *devU, *devtempU;
     size_t insize = bs * ch * h * w * sizeof(float);
     int newh, neww;
