@@ -27,6 +27,9 @@ __global__ void precompute(int och, int ch, float* kernel_weights, float *U)
     int x = threadIdx.x;
     int bid = blockIdx.x;
     int offset = bid*ch + x;
+
+    int tch = blockIdx.x;
+    int toch = threadIdx.x;
    
     float g[4][3] = {
         {1, 0, 0},
@@ -48,7 +51,7 @@ __global__ void precompute(int och, int ch, float* kernel_weights, float *U)
             temp[i][j] = 0;
             for(int k = 0; k <3; ++k)
             {
-                temp[i][j] += kernel_weights[offset*3*3+i*3+k] * g_t[k][j];
+                temp[i][j] += kernel_weights[((toch*ch + tch)*3 + i)*3+k] * g_t[k][j];
             }
         }
     }
@@ -56,10 +59,10 @@ __global__ void precompute(int och, int ch, float* kernel_weights, float *U)
     {
         for(int j = 0; j <4; ++j)
         {
-            U[offset*4*4+i*4+j] = 0;
+            U[((toch*ch + tch)*4 + i)*4+j] = 0;
             for(int k = 0; k <3; ++k)
             {
-                U[offset*4*4+i*4+j] += g[i][k] * temp[k][j];
+                U[((toch*ch + tch)*4 + i)*4+j] += g[i][k] * temp[k][j];
             }
         }
     }
@@ -281,7 +284,7 @@ float * WING::forward(int och, int ch, int bs, int h, int w, int pad, float *in,
     gpu_error(cudaMalloc((void **) & devkwt, kwtsize));
     gpu_error(cudaMalloc((void **) & devU, usize));
     gpu_error(cudaMemcpy(devkwt, kwt, kwtsize, cudaMemcpyHostToDevice));
-    precompute<<<och, ch>>>(och, ch, devkwt, devU);
+    precompute<<<ch, och>>>(och, ch, devkwt, devU);
     gpu_error(cudaFree(devkwt));
 
     size_t cutsize = bs*och*oph*opw*sizeof(float);
@@ -322,7 +325,7 @@ float * WING::forward(int och, int ch, int bs, int h, int w, int pad, float *in,
     //gpu_error(cudaFree(devout));
     dim3 block2(och, 1, 1);
     gpu_error(cudaMalloc((void **) & devY, ysize));
-    lastcal<<<grid,block>>>(och, p, q, bs, devsum, devY);
+    lastcal<<<grid,block2>>>(och, p, q, bs, devsum, devY);
     gpu_error(cudaFree(devsum));
     
     dim3 cutgrid(bs*och, p, q);
