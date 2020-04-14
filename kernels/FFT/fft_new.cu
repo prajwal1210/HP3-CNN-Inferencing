@@ -186,11 +186,11 @@ float* conv_operation(float* filter_align, float* input_layer_pad, int H, int W,
   cudaEventCreate(&start);
   cudaEventCreate(&stop);
 
-  int new_OS = OS+1;
+  int new_OS = OS + 1;
   int N[3] = {D,H,W};
   cufftReal* d_inA;
   cufftComplex *d_outA, *d_outB;
-  cufftHandle fwplanA, bwplan;
+  cufftHandle bwplan;
   size_t real_size = new_OS * D* W * H * sizeof(cufftReal);
   size_t complex_size = new_OS * D * H * (W/2 + 1) * sizeof(cufftComplex);
 
@@ -202,17 +202,17 @@ float* conv_operation(float* filter_align, float* input_layer_pad, int H, int W,
   cudaMemset(d_inA,0,real_size);
   cudaMemset(d_outB,0,complex_size);
 
-  float * input_in = (float *)malloc(real_size);
+  //float * input_in = (float *)malloc(complex_size);
   for(int  i = 0; i < new_OS; i++) {
-      cudaMemcpy(&input_in[i * D * H * W], input_layer_pad,  D* W * H * sizeof(cufftReal),  cudaMemcpyHostToHost);
+      cudaMemcpy(&d_outA[i * D * (H/2 + 1) * W], input_layer_pad,   D * H * (W/2 + 1) * sizeof(cufftComplex),  cudaMemcpyHostToDevice);
   }
 
-  cudaMemcpy(d_inA, input_in, real_size,  cudaMemcpyHostToDevice);
-  free(input_in);
+  //cudaMemcpy(d_outA, input_in, complex_size,  cudaMemcpyHostToDevice);
+  //free(input_in);
   
   /* Make the plans for filter and inverse of output */
   cudaEventRecord(start);
-  cufftSafeCall(cufftPlanMany(&fwplanA, 3, N, NULL, 0,0,NULL,0,0, CUFFT_R2C ,new_OS));
+  //cufftSafeCall(cufftPlanMany(&fwplanA, 3, N, NULL, 0,0,NULL,0,0, CUFFT_R2C ,new_OS));
   cufftSafeCall(cufftPlanMany(&bwplan, 3, N, NULL, 0,0,NULL,0,0, CUFFT_C2R ,new_OS));
   cudaEventRecord(stop);
 
@@ -223,15 +223,7 @@ float* conv_operation(float* filter_align, float* input_layer_pad, int H, int W,
   conv_time += milliseconds;
   
   /* FFT on the filter */
-  cudaEventRecord(start);
-  cufftSafeCall(cufftExecR2C(fwplanA, d_inA, d_outA));
-  cudaEventRecord(stop);
   cudaMemcpy(d_outB, filter_align, (OS) * D * H * (W/2 + 1) * sizeof(cufftComplex), cudaMemcpyHostToDevice); 
-
-  cudaEventSynchronize(stop);
-  milliseconds = 0;
-  cudaEventElapsedTime(&milliseconds, start, stop);
-  conv_time += milliseconds;
 
   int blocksx = ceil((new_OS * D*H*(W/2 + 1)) / 1024.0f);
   dim3 threads4(1024);
@@ -267,7 +259,7 @@ float* conv_operation(float* filter_align, float* input_layer_pad, int H, int W,
   cudaFree(d_outA); 
   cudaFree(d_outB);
   
-  cufftDestroy(fwplanA);
+  //cufftDestroy(fwplanA);
   cufftDestroy(bwplan);
 
   cudaEventDestroy(start);
@@ -315,11 +307,54 @@ float* pre_processinput(float* input_layer, int pad, int  batch_size, int* il_di
   cudaEventElapsedTime(&milliseconds, start, stop);
   overhead_time += milliseconds;
   
-  cudaFree(pad_input_in); cudaFree(pad_input_out);
+  cudaFree(pad_input_in); 
+  cudaFree(pad_input_out);
+  
+ H = new_H; W = new_W;
+  int N[3] = {D,H, W};
+  
+  cufftReal* d_input;
+  cufftComplex* d_input_complex;
+  cufftHandle fwplan_input;
+  size_t real_size = BS * D* W * H * sizeof(cufftReal);
+  size_t complex_size = BS * D * W * (H/2 + 1) * sizeof(cufftComplex);
+
+  float* complex_input = (float*)malloc(complex_size);
+
+  cudaMalloc((void**)&d_input, real_size);
+  cudaMalloc((void**)&d_input_complex, complex_size);
+  cudaMemset(d_input,0,real_size);
+
+  cudaMemcpy(d_input, input_layer_pad, real_size, cudaMemcpyHostToDevice);
+  
+  cudaEventRecord(start);
+  cufftSafeCall(cufftPlanMany(&fwplan_input, 3, N, NULL, 0,0,NULL,0,0, CUFFT_R2C ,BS));
+  cudaEventRecord(stop);
+
+  cudaEventSynchronize(stop);
+  milliseconds = 0;
+  cudaEventElapsedTime(&milliseconds, start, stop);
+  conv_time += milliseconds;
+
+
+  cudaEventRecord(start);
+  cufftSafeCall(cufftExecR2C(fwplan_input, d_input, d_input_complex));
+  cudaEventRecord(stop);
+  
+  cudaMemcpy(complex_input, d_input_complex , complex_size, cudaMemcpyDeviceToHost);
+
+  cudaEventSynchronize(stop);
+  milliseconds = 0;
+  cudaEventElapsedTime(&milliseconds, start, stop);
+  conv_time += milliseconds;
+
+  cudaFree(d_input);
+  cufftDestroy(fwplan_input);
+
   cudaEventDestroy(start);
   cudaEventDestroy(stop);
 
-  return input_layer_pad;
+  return complex_input;
 }
 
 
@@ -523,7 +558,7 @@ float* FFT::forward(int out_size, int channel, int kernel_height, int kernel_wid
   float* final_output = (float *)malloc(batch_size * out_size * out_H * out_W * sizeof(float)); 
   
   for(int l = 0; l < batch_size ; l++) {
-    float* actual_result = convolve_FFT(&input_layer_pad[l * channel * H * W], filter_complex, pad, stride, batch_size , il_dim, kernel_dim,
+    float* actual_result = convolve_FFT(&input_layer_pad[l * channel * (H/2 + 1) * W * 2], filter_complex, pad, stride, batch_size , il_dim, kernel_dim,
                                         out_size, conv_time, overhead_time);
     
     cudaEventRecord(start);
