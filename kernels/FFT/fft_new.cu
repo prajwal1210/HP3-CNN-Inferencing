@@ -185,13 +185,12 @@ float* conv_operation(float* filter_align, float* input_layer_pad, int H, int W,
   cudaEvent_t start, stop;
   cudaEventCreate(&start);
   cudaEventCreate(&stop);
-  cudaError_t err = cudaSuccess;
 
-  int new_OS = OS + 1;
+  int new_OS = OS+1;
   int N[3] = {D,H,W};
   cufftReal* d_inA;
   cufftComplex *d_outA, *d_outB;
-  cufftHandle bwplan;
+  cufftHandle fwplanA, bwplan;
   size_t real_size = new_OS * D* W * H * sizeof(cufftReal);
   size_t complex_size = new_OS * D * H * (W/2 + 1) * sizeof(cufftComplex);
 
@@ -202,21 +201,18 @@ float* conv_operation(float* filter_align, float* input_layer_pad, int H, int W,
   
   cudaMemset(d_inA,0,real_size);
   cudaMemset(d_outB,0,complex_size);
-  cudaMemset(d_outA,0,complex_size);
 
-  //float * input_in = (float *)malloc(real_size);
+  float * input_in = (float *)malloc(real_size);
   for(int  i = 0; i < new_OS; i++) {
-      err = cudaMemcpy(&d_outA[i * D * (H/2 + 1) * W], input_layer_pad,  D * H * (W/2 + 1) * sizeof(cufftComplex),  cudaMemcpyHostToDevice);
-      if (err != cudaSuccess)
-      {
-          fprintf(stderr, "Failed to copy vector into d_outA(error code %s)!\n", cudaGetErrorString(err));
-          exit(EXIT_FAILURE);
-      }
+      cudaMemcpy(&input_in[i * D * H * W], input_layer_pad,  D* W * H * sizeof(cufftReal),  cudaMemcpyHostToHost);
   }
+
+  cudaMemcpy(d_inA, input_in, real_size,  cudaMemcpyHostToDevice);
+  free(input_in);
   
   /* Make the plans for filter and inverse of output */
   cudaEventRecord(start);
-  //cufftSafeCall(cufftPlanMany(&fwplanA, 3, N, NULL, 0,0,NULL,0,0, CUFFT_R2C ,new_OS));
+  cufftSafeCall(cufftPlanMany(&fwplanA, 3, N, NULL, 0,0,NULL,0,0, CUFFT_R2C ,new_OS));
   cufftSafeCall(cufftPlanMany(&bwplan, 3, N, NULL, 0,0,NULL,0,0, CUFFT_C2R ,new_OS));
   cudaEventRecord(stop);
 
@@ -227,14 +223,12 @@ float* conv_operation(float* filter_align, float* input_layer_pad, int H, int W,
   conv_time += milliseconds;
   
   /* FFT on the filter */
-  err = cudaMemcpy(d_outB, filter_align, (OS) * D * H * (W/2 + 1) * sizeof(cufftComplex), cudaMemcpyHostToDevice);
-  if (err != cudaSuccess)
-  {
-      fprintf(stderr, "Failed to copy vector into d_outB(error code %s)!\n", cudaGetErrorString(err));
-      exit(EXIT_FAILURE);
-  } 
+  cudaEventRecord(start);
+  cufftSafeCall(cufftExecR2C(fwplanA, d_inA, d_outA));
+  cudaEventRecord(stop);
+  cudaMemcpy(d_outB, filter_align, (OS) * D * H * (W/2 + 1) * sizeof(cufftComplex), cudaMemcpyHostToDevice); 
 
-  //cudaEventSynchronize(stop);
+  cudaEventSynchronize(stop);
   milliseconds = 0;
   cudaEventElapsedTime(&milliseconds, start, stop);
   conv_time += milliseconds;
@@ -256,6 +250,10 @@ float* conv_operation(float* filter_align, float* input_layer_pad, int H, int W,
   cudaEventRecord(start);
   cufftSafeCall(cufftExecC2R(bwplan, d_outA, d_inA));
   cudaEventRecord(stop);
+  
+
+  //float* result1 = (float*)malloc((OS) * D * H * W * sizeof(float));
+  //cudaMemcpy(result1, d_inA, (OS) * D * H * W * sizeof(float), cudaMemcpyDeviceToHost);
 
   cudaEventSynchronize(stop);
   milliseconds = 0;
@@ -264,10 +262,12 @@ float* conv_operation(float* filter_align, float* input_layer_pad, int H, int W,
   
 
   /* Free the GPU */
+  //cudaFree(d_inA); 
+  
   cudaFree(d_outA); 
   cudaFree(d_outB);
   
-  //cufftDestroy(fwplanA);
+  cufftDestroy(fwplanA);
   cufftDestroy(bwplan);
 
   cudaEventDestroy(start);
@@ -292,17 +292,12 @@ float* pre_processinput(float* input_layer, int pad, int  batch_size, int* il_di
   
   /* pad input */
   int new_H = H+2*pad; int new_W = W+2*pad;
-  //float *input_layer_pad = (float *)malloc(BS * D * new_H* new_W *sizeof(float));
+  float *input_layer_pad = (float *)malloc(BS * D * new_H* new_W *sizeof(float));
   float *pad_input_in = NULL; cudaMalloc((void **)&pad_input_in, BS * H * W * D * sizeof(float));
   float *pad_input_out = NULL; cudaMalloc((void **)&pad_input_out, BS * new_H * new_W * D * sizeof(float));  
 
   
-  err = cudaMemcpy(pad_input_in, input_layer, BS * H * W * D * sizeof(float) , cudaMemcpyHostToDevice);
-  if (err != cudaSuccess)
-  {
-      fprintf(stderr, "Failed to copy vector into pad_input_in(error code %s)!\n", cudaGetErrorString(err));
-      exit(EXIT_FAILURE);
-  }
+  cudaMemcpy(pad_input_in, input_layer, BS * H * W * D * sizeof(float) , cudaMemcpyHostToDevice);
   
   dim3 threads1(8,8,8);
   dim3 grid1(ceil(new_H/8.0f),ceil(new_W/8.0f),ceil(D/8.0f));
@@ -312,61 +307,19 @@ float* pre_processinput(float* input_layer, int pad, int  batch_size, int* il_di
   cudaEventRecord(stop);    
   
   err = cudaGetLastError(); if(err!=cudaSuccess){fprintf(stderr, "Failed to launch pad input (error code %s)!\n", cudaGetErrorString(err)); exit(EXIT_FAILURE);}
+  
+  cudaMemcpy(input_layer_pad, pad_input_out , BS * new_H * new_W * D * sizeof(float), cudaMemcpyDeviceToHost);
 
   cudaEventSynchronize(stop);
   milliseconds = 0;
   cudaEventElapsedTime(&milliseconds, start, stop);
   overhead_time += milliseconds;
   
-  cudaFree(pad_input_in); 
-  //cudaFree(pad_input_out);
-  
-  H = new_H; W = new_W;
-  int N[3] = {D,H, W};
-  
-  cufftComplex* d_input_complex;
-  cufftHandle fwplan_input;
-  //size_t real_size = BS * D* W * H * sizeof(cufftReal);
-  size_t complex_size = BS * D * W * (H/2 + 1) * sizeof(cufftComplex);
-
-  float* complex_input = (float*)malloc(complex_size);
-
-  cudaMalloc((void**)&d_input_complex, complex_size);
-  
-  cudaEventRecord(start);
-  cufftSafeCall(cufftPlanMany(&fwplan_input, 3, N, NULL, 0,0,NULL,0,0, CUFFT_R2C ,BS));
-  cudaEventRecord(stop);
-
-  cudaEventSynchronize(stop);
-  milliseconds = 0;
-  cudaEventElapsedTime(&milliseconds, start, stop);
-  conv_time += milliseconds;
-
-
-  cudaEventRecord(start);
-  cufftSafeCall(cufftExecR2C(fwplan_input, pad_input_out, d_input_complex));
-  cudaEventRecord(stop);
-  
-  err = cudaMemcpy(complex_input, d_input_complex , complex_size, cudaMemcpyDeviceToHost);
-  if (err != cudaSuccess)
-  {
-      fprintf(stderr, "Failed to copy vector into complex_input(error code %s)!\n", cudaGetErrorString(err));
-      exit(EXIT_FAILURE);
-  }
-
-  cudaEventSynchronize(stop);
-  milliseconds = 0;
-  cudaEventElapsedTime(&milliseconds, start, stop);
-  conv_time += milliseconds;
-
-  cudaFree(pad_input_out); 
-  cudaFree(d_input_complex);
-  cufftDestroy(fwplan_input);
-
+  cudaFree(pad_input_in); cudaFree(pad_input_out);
   cudaEventDestroy(start);
   cudaEventDestroy(stop);
 
-  return complex_input;
+  return input_layer_pad;
 }
 
 
@@ -387,12 +340,7 @@ float* pre_process_filter(float* kernel, int pad, int* il_dim, int* kernel_dim, 
     /*flip filter */
     float *f_A = NULL; cudaMalloc((void **)&f_A, out_size * fH * fW * fD * sizeof(float));
     float *f_B = NULL; cudaMalloc((void **)&f_B, out_size * fH * fW * fD * sizeof(float));
-    err = cudaMemcpy(f_A, kernel , out_size * fH * fW * fD * sizeof(float), cudaMemcpyHostToDevice);
-    if (err != cudaSuccess)
-  {
-      fprintf(stderr, "Failed to copy vector into f_A(error code %s)!\n", cudaGetErrorString(err));
-      exit(EXIT_FAILURE);
-  }
+    cudaMemcpy(f_A, kernel , out_size * fH * fW * fD * sizeof(float), cudaMemcpyHostToDevice);
 
     dim3 threads0(8,8,8);
     dim3 grid0(ceil(fH/8.0f),ceil(fW/8.0f),ceil(fD/8.0f));
@@ -459,7 +407,7 @@ float* pre_process_filter(float* kernel, int pad, int* il_dim, int* kernel_dim, 
     int N[3] = {D ,H, W};
     cufftComplex* d_input_complex;
     cufftHandle fwplan_input;
-    //size_t real_size = out_size * D* W * H * sizeof(cufftReal);
+    size_t real_size = out_size * D* W * H * sizeof(cufftReal);
     size_t complex_size = out_size * D * W * (H/2 + 1) * sizeof(cufftComplex);
 
     float* complex_input = (float*)malloc(complex_size);
@@ -470,12 +418,7 @@ float* pre_process_filter(float* kernel, int pad, int* il_dim, int* kernel_dim, 
     cufftSafeCall(cufftExecR2C(fwplan_input, d_B, d_input_complex));
     cudaEventRecord(stop);
     
-    err = cudaMemcpy(complex_input, d_input_complex , complex_size, cudaMemcpyDeviceToHost);  
-    if (err != cudaSuccess)
-    {
-        fprintf(stderr, "Failed to copy vector into complex_input(error code %s)!\n", cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
-    }
+    cudaMemcpy(complex_input, d_input_complex , complex_size, cudaMemcpyDeviceToHost);  
 
     cudaEventSynchronize(stop);
     milliseconds = 0;
@@ -531,22 +474,15 @@ float* convolve_FFT(float* input_layer_pad, float * kernel, int pad, int stride,
   float *crop_in = NULL; crop_in = conv_result; 
 
   dim3 threads5(8,8,8);
-  dim3 grid5(ceil(H/8.0f),ceil(W/8.0f),ceil(out_size/8.0f));
-  //printf("%f %f %f\n", ceil(H/8.0f),ceil(W/8.0f),ceil(out_size/8.0f));
+  dim3 grid5(ceil(H/8.0f),ceil(W/8.0f),ceil(out_size/8));
 
-  err =  cudaSuccess;
   cudaEventRecord(start);
   crop_and_stride<<<grid5, threads5>>>(crop_in, crop_out, H, W, nos_oH, nos_oW, D, stride, out_size);
   cudaEventRecord(stop);
 
   err = cudaGetLastError(); if(err!=cudaSuccess){fprintf(stderr, "Failed to launch crop(error code %s)!\n", cudaGetErrorString(err)); exit(EXIT_FAILURE);}
   
-  err = cudaMemcpy(result2, crop_out, out_size* oW*oH* sizeof(float) ,cudaMemcpyDeviceToHost);
-  if (err != cudaSuccess)
-  {
-      fprintf(stderr, "Failed to copy vector into result2(error code %s)!\n", cudaGetErrorString(err));
-      exit(EXIT_FAILURE);
-  }
+  cudaMemcpy(result2, crop_out, out_size* oW*oH* sizeof(float) ,cudaMemcpyDeviceToHost);
   cudaEventSynchronize(stop);
   milliseconds = 0;
   cudaEventElapsedTime(&milliseconds, start, stop);
@@ -576,6 +512,9 @@ float* FFT::forward(int out_size, int channel, int kernel_height, int kernel_wid
   cudaEventCreate(&stop);
 
   int H = height+2*pad; int W = width+2*pad;
+  //int bpad = (H - kernel_height)/2;
+  //int fpad; if((H - kernel_height) % 2 == 0) fpad = bpad; else fpad = bpad + 1;  
+  //int fH = kernel_height+fpad+bpad; int fW = kernel_width+fpad+bpad; int fD = channel;
 
   float *filter_complex = pre_process_filter(kernel, pad, il_dim, kernel_dim, out_size, conv_time, overhead_time);
   float* input_layer_pad = pre_processinput(input_layer_without_padding, pad, batch_size, il_dim, conv_time, overhead_time);
@@ -584,7 +523,7 @@ float* FFT::forward(int out_size, int channel, int kernel_height, int kernel_wid
   float* final_output = (float *)malloc(batch_size * out_size * out_H * out_W * sizeof(float)); 
   
   for(int l = 0; l < batch_size ; l++) {
-    float* actual_result = convolve_FFT(&input_layer_pad[l * channel * (H/2 + 1) * W], filter_complex, pad, stride, batch_size , il_dim, kernel_dim,
+    float* actual_result = convolve_FFT(&input_layer_pad[l * channel * H * W], filter_complex, pad, stride, batch_size , il_dim, kernel_dim,
                                         out_size, conv_time, overhead_time);
     
     cudaEventRecord(start);
