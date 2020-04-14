@@ -284,7 +284,6 @@ float* pre_processinput(float* input_layer, int pad, int  batch_size, int* il_di
   
   /* pad input */
   int new_H = H+2*pad; int new_W = W+2*pad;
-  float *input_layer_pad = (float *)malloc(BS * D * new_H* new_W *sizeof(float));
   float *pad_input_in = NULL; cudaMalloc((void **)&pad_input_in, BS * H * W * D * sizeof(float));
   float *pad_input_out = NULL; cudaMalloc((void **)&pad_input_out, BS * new_H * new_W * D * sizeof(float));  
 
@@ -299,8 +298,6 @@ float* pre_processinput(float* input_layer, int pad, int  batch_size, int* il_di
   cudaEventRecord(stop);    
   
   err = cudaGetLastError(); if(err!=cudaSuccess){fprintf(stderr, "Failed to launch pad input (error code %s)!\n", cudaGetErrorString(err)); exit(EXIT_FAILURE);}
-  
-  cudaMemcpy(input_layer_pad, pad_input_out , BS * new_H * new_W * D * sizeof(float), cudaMemcpyDeviceToHost);
 
   cudaEventSynchronize(stop);
   milliseconds = 0;
@@ -308,12 +305,10 @@ float* pre_processinput(float* input_layer, int pad, int  batch_size, int* il_di
   overhead_time += milliseconds;
   
   cudaFree(pad_input_in); 
-  cudaFree(pad_input_out);
   
- H = new_H; W = new_W;
+  H = new_H; W = new_W;
   int N[3] = {D,H, W};
   
-  cufftReal* d_input;
   cufftComplex* d_input_complex;
   cufftHandle fwplan_input;
   size_t real_size = BS * D* W * H * sizeof(cufftReal);
@@ -321,11 +316,7 @@ float* pre_processinput(float* input_layer, int pad, int  batch_size, int* il_di
 
   float* complex_input = (float*)malloc(complex_size);
 
-  cudaMalloc((void**)&d_input, real_size);
   cudaMalloc((void**)&d_input_complex, complex_size);
-  cudaMemset(d_input,0,real_size);
-
-  cudaMemcpy(d_input, input_layer_pad, real_size, cudaMemcpyHostToDevice);
   
   cudaEventRecord(start);
   cufftSafeCall(cufftPlanMany(&fwplan_input, 3, N, NULL, 0,0,NULL,0,0, CUFFT_R2C ,BS));
@@ -338,7 +329,7 @@ float* pre_processinput(float* input_layer, int pad, int  batch_size, int* il_di
 
 
   cudaEventRecord(start);
-  cufftSafeCall(cufftExecR2C(fwplan_input, d_input, d_input_complex));
+  cufftSafeCall(cufftExecR2C(fwplan_input, pad_input_out, d_input_complex));
   cudaEventRecord(stop);
   
   cudaMemcpy(complex_input, d_input_complex , complex_size, cudaMemcpyDeviceToHost);
@@ -348,7 +339,7 @@ float* pre_processinput(float* input_layer, int pad, int  batch_size, int* il_di
   cudaEventElapsedTime(&milliseconds, start, stop);
   conv_time += milliseconds;
 
-  cudaFree(d_input);
+  cudaFree(pad_input_out);
   cufftDestroy(fwplan_input);
 
   cudaEventDestroy(start);
