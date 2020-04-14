@@ -1,8 +1,10 @@
+//%%cuda --name wing_test.cu
 #include "winograd_mem.cu"
-
+#include <chrono>
 #include<random>
 #define LOOP(x) for(int t##x = 0; t##x < x; t##x++)
 using namespace std;
+using namespace std::chrono; 
 
 int main(void) 
 {
@@ -13,16 +15,18 @@ int main(void)
     
     bs = 1;
     ch = 64;
-    h = 256;
-    w = 256;
+    h = 64;
+    w = 64;
     och = 64;
     pad = 0;
+ 
     bs = 2;
     ch = 2;
     h = 5;
     w = 5;
     och = 2;
     pad = 0;
+ 
     size_t insize = bs * ch * h * w * sizeof(float);
     float *in = new float[insize/sizeof(float)];
     float *t = in;
@@ -75,8 +79,13 @@ int main(void)
     cout<<"\nConvolving\n";
     
     int oph, opw; //output height, output weight
+    auto start = high_resolution_clock::now();
     cutY = WING::forward(och, ch, bs, h, w, pad, in, oph, opw, kernel_weights);
-
+    auto stop = high_resolution_clock::now(); 
+    auto duration = duration_cast<microseconds>(stop - start); 
+  
+    cout << "Time taken by function: "
+         << duration.count() << " microseconds" << endl;
     cout<<"\nConvolution finished\n\n";
       
     LOOP(bs)

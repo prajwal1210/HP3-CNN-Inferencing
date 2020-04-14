@@ -1,4 +1,3 @@
-//%%cuda --name winograd.cu
 #include "wingheader.h"
 
 #define LOOP(x) for(int t##x = 0; t##x < x; t##x++)
@@ -65,7 +64,6 @@ __global__ void precompute(int och, int ch, float* kernel_weights, float *U)
     }
     // free(temp);
 }
-
 __device__ void uv(int tbs, int tp, int tq, int p, int q, int och, int tch, int ch, float *devfin, float *U,  float V[4][4])
 {
     int x = 0;//threadIdx.x;
@@ -73,16 +71,6 @@ __device__ void uv(int tbs, int tp, int tq, int p, int q, int och, int tch, int 
         for(int j = 0; j <4; ++j)
             devfin[(((((tbs*p+tp)*q+tq)*ch+tch)*och+x)*4+i)*4+j] = U[((x*ch+tch)*4+i)*4+j]*V[i][j];            
 }
-
-__device__ void uvL(int tbs, int tp, int tq, int p, int q, int och, int tch, int ch, float *devfin, float *U,  float V[4][4])
-{
-    LOOP(och)//threadIdx.x;
-        for(int i = 0; i <4; ++i)
-            for(int j = 0; j <4; ++j)
-                devfin[(((((tbs*p+tp)*q+tq)*ch+tch)*och+toch)*4+i)*4+j] = U[((toch*ch+tch)*4+i)*4+j]*V[i][j];            
-}
-
-
 __device__ void amul(int tbs, int tp, int tq, int bs, int och, int p, int q, float *devsum, float *devY)
 {
     float A_t[2][4] = {
@@ -116,48 +104,6 @@ __device__ void amul(int tbs, int tp, int tq, int bs, int och, int p, int q, flo
             for(int k = 0; k <4; ++k)
             {
                 devY[((((tbs*och+x)*p+tp)*q+tq)*2+i)*2+j] += temp[i][k] * A[k][j];
-            }
-        }
-    }
-    // free(temp);
-}
-
-__device__ void amulL(int tbs, int tp, int tq, int bs, int och, int p, int q, float *devsum, float *devY)
-{
-    float A_t[2][4] = {
-        {1, 1, 1, 0},
-        {0, 1, -1,-1}
-    };
-    float A[4][2] = {
-        {1,0},
-        {1,1},
-        {1,-1},
-        {0,-1}
-    };
-    int x = 0; //threadIdx.x;
-    float temp[2][4];// = (float *)malloc(2*4*sizeof(float));
-    LOOP(och)
-    {
-        for(int i = 0; i <2; ++i)
-        {
-            for(int j = 0; j <4; ++j)
-            {
-                temp[i][j] = 0;
-                for(int k = 0; k <4; ++k)
-                {
-                    temp[i][j] += A_t[i][k] * devsum[((((tbs*och+toch)*p+tp)*q+tq)*4+k)*4+j];
-                }
-            }
-        }
-        for(int i = 0; i <2; ++i)
-        {
-            for(int j = 0; j <2; ++j)
-            {
-                devY[((((tbs*och+toch)*p+tp)*q+tq)*2+i)*2+j] = 0;
-                for(int k = 0; k <4; ++k)
-                {
-                    devY[((((tbs*och+toch)*p+tp)*q+tq)*2+i)*2+j] += temp[i][k] * A[k][j];
-                }
             }
         }
     }
@@ -203,7 +149,7 @@ __global__ void cutpad(float  *devY, float *devcutY, int oph,int opw)
     }
 }
     
-__global__ void tile(int bs, int p, int q, int ch, float *devin, float *devsum, float *devY, float *devU, int h, int w, int och, float *devfin)
+__global__ void tile(int bs, int p, int q, int ch, float *devin, float *devout, float *devsum, float *devY, float *devU, int h, int w, int och, float *devfin)
 {
     float thrtile[4][4];    
     int tbs, tp, tq, tch;
@@ -255,13 +201,17 @@ __global__ void tile(int bs, int p, int q, int ch, float *devin, float *devsum, 
         }
     }
     //float *fin = (float *)malloc(och*4*4*sizeof(float));
-    //uv(tbs, tp, tq, p, q, och, tch, ch, devfin, devU, V); 
-    uvL(tbs, tp, tq, p, q, och, tch, ch, devfin, devU, V); 
-
+    uv(tbs, tp, tq, p, q, och, tch, ch, devfin, devU, V); 
     //cudaDeviceSynchronize();
-    // __syncthreads();
     //free(V);
 
+    for(int toch = 0; toch<och; toch++)
+        for(int i = 0; i < 4; i++)
+            for(int j = 0; j < 4; j++)
+               devout[(((((tbs*och+toch)*p+tp)*q+tq)*ch+tch)*4 + i)*4 + j] = devfin[(((((tbs*p+tp)*q+tq)*ch+tch)*och+toch)*4+i)*4+j];
+
+    // sum along the channels, using log n summing
+    //free(fin);
     for(int s = 1; s < ch; s *= 2)
     {
         if(tch % (2*s) == 0 && tch+s < ch)
@@ -269,7 +219,7 @@ __global__ void tile(int bs, int p, int q, int ch, float *devin, float *devsum, 
             LOOP(och)
                 for(int i = 0; i < 4; i++)
                     for(int j = 0; j < 4; j++)
-                        devfin[(((((tbs*p+tp)*q+tq)*ch+tch)*och+toch)*4+i)*4+j] += devfin[(((((tbs*p+tp)*q+tq)*ch+(tch+s))*och+toch)*4+i)*4+j];
+                        devout[(((((tbs*och+toch)*p+tp)*q+tq)*ch+tch)*4 + i)*4 + j] += devout[(((((tbs*och+toch)*p+tp)*q+tq)*ch+(tch+s))*4 + i)*4 + j];
         }
         __syncthreads();
     }
@@ -278,12 +228,11 @@ __global__ void tile(int bs, int p, int q, int ch, float *devin, float *devsum, 
         LOOP(och)
             for(int i = 0; i < 4; i++)
                 for(int j = 0; j < 4; j++)
-                    devsum[((((tbs*och+toch)*p+tp)*q+tq)*4 + i)*4 + j] = devfin[(((((tbs*p+tp)*q+tq)*ch+tch)*och+toch)*4+i)*4+j];
+                    devsum[((((tbs*och+toch)*p+tp)*q+tq)*4 + i)*4 + j] = devout[(((((tbs*och+toch)*p+tp)*q+tq)*ch)*4 + i)*4 + j];
     }
   if(tch == 0)
   {
-      // amul(tbs, tp, tq, bs, och, p, q, devsum, devY);
-      amulL(tbs, tp, tq, bs, och, p, q, devsum, devY);
+      amul(tbs, tp, tq, bs, och, p, q, devsum, devY);
       //cudaDeviceSynchronize();
   }
 }
@@ -300,12 +249,12 @@ void tilehost(int och, int ch, int bs, int h, int w, int pad, float *devin, int 
  
 
     size_t finsize = bs * p * q * ch * och * 4 * 4 * sizeof(float);
-   // size_t outsize = bs * och * p * q * ch * 4 * 4 * sizeof(float);
+    size_t outsize = bs * och * p * q * ch * 4 * 4 * sizeof(float);
     size_t sumsize = bs * och * p * q * 4 * 4 * sizeof(float);
     size_t ysize = bs * och * p * q * 2 * 2 * sizeof(float);
 
  
-    //gpu_error(cudaMalloc((void **) & devout, outsize));
+    gpu_error(cudaMalloc((void **) & devout, outsize));
     gpu_error(cudaMalloc((void **) & devsum, sumsize));
 
     gpu_error(cudaMalloc((void **) & devfin, finsize));
@@ -317,10 +266,10 @@ void tilehost(int och, int ch, int bs, int h, int w, int pad, float *devin, int 
     dim3 grid(bs, p, q);  // 3-D
     dim3 block(ch, 1, 1); // 1-D
     // call the kernel function for tiling
-    tile<<<grid, block>>>(bs, p, q, ch, devin, devsum, devY, devU, h, w, och, devfin);
+    tile<<<grid, block>>>(bs, p, q, ch, devin, devout, devsum, devY, devU, h, w, och, devfin);
     cudaSafeCall(cudaGetLastError());
 
-    //gpu_error(cudaFree(devout));
+    gpu_error(cudaFree(devout));
     gpu_error(cudaFree(devsum));
     
 
@@ -352,76 +301,6 @@ __global__ void ucopy(float *devtempU, float *devU, int toch, int n1, int n2, in
         LOOP(n2)
              devtempU[((tch*n1+tn1)*n2+tn2)] = devU[(((toch*ch+tch)*n1+tn1)*n2+tn2)];
 }
-
-// float * WING::forward(int och, int ch, int bs, int h, int w, int pad, float *in, int &oph, int &opw, float *kwt)
-// {
-//     float *devin, *devinnopad, *cutY, *devkwt, *devU, *devtempU;
-//     size_t insize = bs * ch * h * w * sizeof(float);
-//     int newh, neww;
- 
-//     gpu_error(cudaMalloc((void **) & devinnopad, insize));
-//     gpu_error(cudaMemcpy(devinnopad, in, insize, cudaMemcpyHostToDevice));
-
-//     newh = h + 2*pad;
-//     neww = w + 2*pad;
-//     oph = newh-2;
-//     opw = neww-2;
-//     if(newh%2)
-//         newh++;
-//     if(neww%2)
-//         neww++;
-//     if(newh < 4)
-//         newh = 4;
-//     if(neww < 4)
-//         neww = 4;
-
-//     insize = bs * ch * newh * neww * sizeof(float);
-//     gpu_error(cudaMalloc((void **) & devin, insize));
-
-//     // call padding
-//     dim3 padgrid(bs*ch, newh, neww);
-//     dim3 padblock(1, 1, 1);
- 
-//     paddev<<<padgrid,padblock>>>(devin, devinnopad, h, w, pad);
-//     gpu_error(cudaFree(devinnopad));
-//     h = newh;
-//     w = neww;
-
-//     size_t kwtsize = och*ch*3*3*sizeof(float);    
-//     size_t usize = och*ch*4*4*sizeof(float);
-//     gpu_error(cudaMalloc((void **) & devkwt, kwtsize));
-//     gpu_error(cudaMalloc((void **) & devU, usize));
-//     gpu_error(cudaMemcpy(devkwt, kwt, kwtsize, cudaMemcpyHostToDevice));
-//     precompute<<<och, ch>>>(och, ch, devkwt, devU);
-//     gpu_error(cudaFree(devkwt));
-//     // float *kwt_new = (float *)malloc(ch*3*3*sizeof(float));
-//     int n1 = 4, n2 = 4;
-//     size_t tempusize = ch*4*4*sizeof(float);
-//     gpu_error(cudaMalloc((void **) & devtempU, tempusize));
-
-//     size_t cuttempsize = bs*oph*opw*sizeof(float);
-//     size_t cutsize = bs*och*oph*opw*sizeof(float);
-//     cutY = (float *)malloc(cutsize);
-//     float *cuttempY = (float *)malloc(cuttempsize);;
-//     LOOP(och)
-//     {
-//         ucopy<<<1,ch>>>(devtempU, devU, toch, n1, n2, ch);     
-//         tilehost(1,ch,bs,h,w,pad,devin,oph,opw,devtempU,cuttempY);
-//         LOOP(bs)
-//             LOOP(oph)
-//                 LOOP(opw)
-//                     cutY[((((tbs*och+toch)*oph+toph)*opw)+topw)] = cuttempY[(((tbs*oph)+toph)*opw+topw)];
-//     }
-//     free(cuttempY);
-
-//     gpu_error(cudaFree(devtempU));    
-//     gpu_error(cudaFree(devin));    
-//     gpu_error(cudaFree(devU));
-
-//     return cutY;
-
-// }
-
 
 float * WING::forward(int och, int ch, int bs, int h, int w, int pad, float *in, int &oph, int &opw, float *kwt)
 {
@@ -465,27 +344,26 @@ float * WING::forward(int och, int ch, int bs, int h, int w, int pad, float *in,
     precompute<<<och, ch>>>(och, ch, devkwt, devU);
     gpu_error(cudaFree(devkwt));
     // float *kwt_new = (float *)malloc(ch*3*3*sizeof(float));
-    // int n1 = 4, n2 = 4;
-    // size_t tempusize = ch*4*4*sizeof(float);
-    // gpu_error(cudaMalloc((void **) & devtempU, tempusize));
+    int n1 = 4, n2 = 4;
+    size_t tempusize = ch*4*4*sizeof(float);
+    gpu_error(cudaMalloc((void **) & devtempU, tempusize));
 
-    // size_t cuttempsize = bs*oph*opw*sizeof(float);
+    size_t cuttempsize = bs*oph*opw*sizeof(float);
     size_t cutsize = bs*och*oph*opw*sizeof(float);
     cutY = (float *)malloc(cutsize);
-    // float *cuttempY = (float *)malloc(cuttempsize);
-    tilehost(och,ch,bs,h,w,pad,devin,oph,opw,devU,cutY);
-    // LOOP(och)
-    // {
-    //     ucopy<<<1,ch>>>(devtempU, devU, toch, n1, n2, ch);     
-    //     tilehost(1,ch,bs,h,w,pad,devin,oph,opw,devtempU,cuttempY);
-    //     LOOP(bs)
-    //         LOOP(oph)
-    //             LOOP(opw)
-    //                 cutY[((((tbs*och+toch)*oph+toph)*opw)+topw)] = cuttempY[(((tbs*oph)+toph)*opw+topw)];
-    // }
-    // free(cuttempY);
+    float *cuttempY = (float *)malloc(cuttempsize);;
+    LOOP(och)
+    {
+        ucopy<<<1,ch>>>(devtempU, devU, toch, n1, n2, ch);     
+        tilehost(1,ch,bs,h,w,pad,devin,oph,opw,devtempU,cuttempY);
+        LOOP(bs)
+            LOOP(oph)
+                LOOP(opw)
+                    cutY[((((tbs*och+toch)*oph+toph)*opw)+topw)] = cuttempY[(((tbs*oph)+toph)*opw+topw)];
+    }
+    free(cuttempY);
 
-    // gpu_error(cudaFree(devtempU));    
+    gpu_error(cudaFree(devtempU));    
     gpu_error(cudaFree(devin));    
     gpu_error(cudaFree(devU));
 
