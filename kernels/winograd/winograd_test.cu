@@ -51,25 +51,7 @@ int main(void)
             }
         }
     }
-    LOOP(bs)
-    {
-        cout<<"{ ";
-        LOOP(ch)
-        {
-            cout<<"{ ";
-            LOOP(h)
-            {
-                cout<<"{ ";
-                LOOP(w)
-                {
-                    cout<<in[((tbs*ch+tch)*h+th)*w+tw]<<" ";
-                }
-                cout<<"}\n";
-            }
-            cout<<"}\n";
-        }
-        cout<<"}\n";
-    }
+    
     cout<<"\nConvolving\n";
     
     int oph, opw; //output height, output weight
@@ -96,5 +78,53 @@ int main(void)
         cout<<"}\n";
     }
     cout<<"}\n";
+    int n1 = 4, n2 = 4;
+    int p = 2, q = 2;
+    // ch = 2;
+
+    // (((((tbs*och+toch)*p+tp)*q+tq)*ch+tch)*n1 + tn1)*n2 + tn2
+    // (((((tbs*p+tp)*q+tq)*ch+tch)*och+toch)*n1+tn1)*n2+tn2
+
+    LOOP(bs)
+    {
+        cout<<"{ ";
+        LOOP(och)
+        {
+            cout<<"{ ";
+            LOOP(p)
+            {
+                cout<<"{ ";
+                LOOP(q)
+                {
+                    cout<<"{ ";
+                    LOOP(ch)
+                    {
+                        cout<<"{ ";
+                        LOOP(n1)
+                            {
+                                cout<<"{ ";
+                                LOOP(n2)
+                                {   
+                                    cout<<cutY[(((((tbs*och+toch)*p+tp)*q+tq)*1+0)*n1 + tn1)*n2 + tn2]<<" ";
+                                }
+                            cout<<"}\n";
+                            }
+                        cout<<"}\n";
+                    }
+                    cout<<"}\n";
+                    break;
+                }
+                cout<<"}\n";
+                    break;
+
+            }
+        cout<<"}\n";
+                    break;
+
+        }
+    cout<<"}\n";
+                    break;
+
+    }
     return 0;
 }

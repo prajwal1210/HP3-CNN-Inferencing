@@ -1,5 +1,7 @@
 #include "wingheader.h"
 
+// __global__ float *whatev;
+
 #define LOOP(x) for(int t##x = 0; t##x < x; t##x++)
 #define cudaSafeCall(call)  \
         do {\
@@ -212,6 +214,7 @@ __global__ void tile(int bs, int p, int q, int ch, float *devin, float *devout, 
 
     // sum along the channels, using log n summing
     free(fin);
+
     for(int s = 1; s < ch; s *= 2)
     {
         if(tch % (2*s) == 0 && tch+s < ch)
@@ -223,6 +226,16 @@ __global__ void tile(int bs, int p, int q, int ch, float *devin, float *devout, 
         }
         __syncthreads();
     }
+        // return;
+
+    // if(tch == 0)
+    // {
+    //     LOOP(och)
+    //     for(int th = 1; th < ch; th++)
+    //             for(int i = 0; i < 4; i++)
+    //                 for(int j = 0; j < 4; j++)
+    //                     devout[(((((tbs*och+toch)*p+tp)*q+tq)*ch+tch)*4 + i)*4 + j] += devout[(((((tbs*och+toch)*p+tp)*q+tq)*ch+(tch+th))*4 + i)*4 + j];
+    // }
     if(tch == 0) 
     {
         LOOP(och)
@@ -230,6 +243,7 @@ __global__ void tile(int bs, int p, int q, int ch, float *devin, float *devout, 
                 for(int j = 0; j < 4; j++)
                     devsum[((((tbs*och+toch)*p+tp)*q+tq)*4 + i)*4 + j] = devout[(((((tbs*och+toch)*p+tp)*q+tq)*ch)*4 + i)*4 + j];
     }
+    // return;
   if(tch == 0)
   {
       amul<<<1,och>>>(tbs, tp, tq, bs, och, p, q, devsum, devY);
@@ -302,9 +316,13 @@ float * WING::forward(int och, int ch, int bs, int h, int w, int pad, float *in,
     // call the kernel function for tiling
     tile<<<grid, block>>>(bs, p, q, ch, devin, devout, devsum, devY, devU, h, w, och, devfin);
     cudaSafeCall(cudaGetLastError());
-
+    // float *out = (float *)malloc(outsize);
+    // cudaSafeCall(cudaMemcpy(out, devout, outsize, cudaMemcpyDeviceToHost));
+        float *out = (float *)malloc(sumsize);
+    cudaSafeCall(cudaMemcpy(out, devsum, sumsize, cudaMemcpyDeviceToHost));
+    // whatev = devout;
     gpu_error(cudaFree(devin));
-    gpu_error(cudaFree(devout));
+    // gpu_error(cudaFree(devout));
     gpu_error(cudaFree(devsum));
     
     gpu_error(cudaFree(devU));

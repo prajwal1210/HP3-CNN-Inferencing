@@ -205,13 +205,32 @@ __global__ void tile(int bs, int p, int q, int ch, float *devin, float *devout, 
     //cudaDeviceSynchronize();
     //free(V);
 
-    for(int toch = 0; toch<och; toch++)
-        for(int i = 0; i < 4; i++)
-            for(int j = 0; j < 4; j++)
-               devout[(((((tbs*och+toch)*p+tp)*q+tq)*ch+tch)*4 + i)*4 + j] = devfin[(((((tbs*p+tp)*q+tq)*ch+tch)*och+toch)*4+i)*4+j];
+    // for(int toch = 0; toch<och; toch++)
+    //     for(int i = 0; i < 4; i++)
+    //         for(int j = 0; j < 4; j++)
+    //            devout[(((((tbs*och+toch)*p+tp)*q+tq)*ch+tch)*4 + i)*4 + j] = devfin[(((((tbs*p+tp)*q+tq)*ch+tch)*och+toch)*4+i)*4+j];
 
     // sum along the channels, using log n summing
     //free(fin);
+    // for(int s = 1; s < ch; s *= 2)
+    // {
+    //     if(tch % (2*s) == 0 && tch+s < ch)
+    //     {
+    //         LOOP(och)
+    //             for(int i = 0; i < 4; i++)
+    //                 for(int j = 0; j < 4; j++)
+    //                     devout[(((((tbs*och+toch)*p+tp)*q+tq)*ch+tch)*4 + i)*4 + j] += devout[(((((tbs*och+toch)*p+tp)*q+tq)*ch+(tch+s))*4 + i)*4 + j];
+    //     }
+    //     __syncthreads();
+    // }
+    // if(tch == 0) 
+    // {
+    //     LOOP(och)
+    //         for(int i = 0; i < 4; i++)
+    //             for(int j = 0; j < 4; j++)
+    //                 devsum[((((tbs*och+toch)*p+tp)*q+tq)*4 + i)*4 + j] = devout[(((((tbs*och+toch)*p+tp)*q+tq)*ch)*4 + i)*4 + j];
+    // }
+
     for(int s = 1; s < ch; s *= 2)
     {
         if(tch % (2*s) == 0 && tch+s < ch)
@@ -219,7 +238,7 @@ __global__ void tile(int bs, int p, int q, int ch, float *devin, float *devout, 
             LOOP(och)
                 for(int i = 0; i < 4; i++)
                     for(int j = 0; j < 4; j++)
-                        devout[(((((tbs*och+toch)*p+tp)*q+tq)*ch+tch)*4 + i)*4 + j] += devout[(((((tbs*och+toch)*p+tp)*q+tq)*ch+(tch+s))*4 + i)*4 + j];
+                        devfin[(((((tbs*p+tp)*q+tq)*ch+tch)*och+toch)*4+i)*4+j] += devfin[(((((tbs*p+tp)*q+tq)*ch+(tch+s))*och+toch)*4+i)*4+j];
         }
         __syncthreads();
     }
@@ -228,7 +247,7 @@ __global__ void tile(int bs, int p, int q, int ch, float *devin, float *devout, 
         LOOP(och)
             for(int i = 0; i < 4; i++)
                 for(int j = 0; j < 4; j++)
-                    devsum[((((tbs*och+toch)*p+tp)*q+tq)*4 + i)*4 + j] = devout[(((((tbs*och+toch)*p+tp)*q+tq)*ch)*4 + i)*4 + j];
+                    devsum[((((tbs*och+toch)*p+tp)*q+tq)*4 + i)*4 + j] = devfin[(((((tbs*p+tp)*q+tq)*ch+tch)*och+toch)*4+i)*4+j];
     }
   if(tch == 0)
   {
