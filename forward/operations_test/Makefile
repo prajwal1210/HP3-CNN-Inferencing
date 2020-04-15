@@ -7,7 +7,8 @@ OPENCV_LIB_FLAGS = $(shell pkg-config --cflags --libs opencv)
 CUDA_LIB_FLAGS = -lcudnn -lcublas -lcufft -arch=sm_35 -rdc=true -O3
 OPERATIONS_LIBRARY = $(shell find $(PROJECT_DIR) -name operations.cc)
 DIRECT_CONV = $(shell find $(PROJECT_DIR) -name direct_conv.cu)
-FFT_KERNEL = $(shell find $(PROJECT_DIR) -name fft.cu)
+FFT_FILE = fft_new.cu
+FFT_KERNEL = $(shell find $(PROJECT_DIR) -name $(FFT_FILE))
 WINOGRAD_KERNEL = $(shell find $(PROJECT_DIR) -name winograd_mem_out.cu)
 IM2COL_KERNEL = $(shell find $(PROJECT_DIR) -name im2col.cu)
 

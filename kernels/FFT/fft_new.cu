@@ -178,11 +178,10 @@ __global__ void crop_and_stride(float* f_in, float* f_out, int H, int W, int nos
   }
 }
 
-__global__ void memcpy_kernel(cufftComplex* input_layer_pad, cufftComplex* d_outA, int size, int H, int W, int D) {
+__global__ void replicate_input(cufftComplex* input_layer_pad, cufftComplex* d_outA, int size, int H, int W, int D) {
   int i = blockIdx.x *blockDim.x + threadIdx.x;
   if(i < size)
   {
-    //cudaMemcpyAsync(&d_outA[i * D * (H/2 + 1) * W], input_layer_pad,   D * H * (W/2 + 1) * sizeof(cufftComplex),  cudaMemcpyDeviceToDevice);
     d_outA[i] = input_layer_pad[i % (D * (H/2 + 1) * W)];  
   }
 }
@@ -209,10 +208,8 @@ float* conv_operation(cufftComplex* filter_align, cufftComplex* input_layer_pad,
   cudaMalloc((void**)&d_inA, real_size);
   
   cudaMalloc((void**)&d_outA, complex_size);
-  // cudaMalloc((void**)&d_outB, complex_size);
   
   cudaMemset(d_inA,0,real_size);
-  // cudaMemset(d_outB,0,complex_size);
 
   // cudaEventRecord(start);
   // for(int  i = 0; i < new_OS; i++) {
@@ -229,7 +226,7 @@ float* conv_operation(cufftComplex* filter_align, cufftComplex* input_layer_pad,
   dim3 grid4c(blocksxc);
   
   cudaEventRecord(start);
-  memcpy_kernel<<<grid4c, threads4c>>>(input_layer_pad, d_outA, (new_OS * D * (H/2 + 1) * W), H, W, D);
+  replicate_input<<<grid4c, threads4c>>>(input_layer_pad, d_outA, (new_OS * D * (H/2 + 1) * W), H, W, D);
   cudaEventRecord(stop);
   cudaEventSynchronize(stop);
   milliseconds = 0;
@@ -247,16 +244,7 @@ float* conv_operation(cufftComplex* filter_align, cufftComplex* input_layer_pad,
   conv_time += milliseconds;
   
   /* FFT on the filter */
-  cudaEventRecord(start);
-  // cudaMemcpy(d_outB, filter_align, (OS) * D * H * (W/2 + 1) * sizeof(cufftComplex), cudaMemcpyDeviceToDevice); 
   d_outB = filter_align;
-  cudaEventRecord(stop);
-
-  cudaEventSynchronize(stop);
-  milliseconds = 0;
-  cudaEventElapsedTime(&milliseconds, start, stop);
-  overhead_time += milliseconds;
-
 
   int blocksx = ceil((new_OS * D*H*(W/2 + 1)) / 1024.0f);
   dim3 threads4(1024);
@@ -282,13 +270,9 @@ float* conv_operation(cufftComplex* filter_align, cufftComplex* input_layer_pad,
   conv_time += milliseconds;
   
 
-  /* Free the GPU */
-  //cudaFree(d_inA); 
-  
+  /* Free the GPU */  
   cudaFree(d_outA); 
-  // cudaFree(d_outB);
-  
-  //cufftDestroy(fwplanA);
+
   cufftDestroy(bwplan);
 
   cudaEventDestroy(start);
@@ -317,7 +301,7 @@ cufftComplex* pre_processinput(float* input_layer, int pad, int  batch_size, int
   float *pad_input_out = NULL; cudaMalloc((void **)&pad_input_out, BS * new_H * new_W * D * sizeof(float));  
 
   
-  cudaMemcpyAsync(pad_input_in, input_layer, BS * H * W * D * sizeof(float) , cudaMemcpyHostToDevice);
+  cudaMemcpy(pad_input_in, input_layer, BS * H * W * D * sizeof(float) , cudaMemcpyHostToDevice);
   
   dim3 threads1(8,8,8);
   dim3 grid1(ceil(new_H/8.0f),ceil(new_W/8.0f),ceil(D/8.0f));
@@ -343,8 +327,6 @@ cufftComplex* pre_processinput(float* input_layer, int pad, int  batch_size, int
   size_t real_size = BS * D* W * H * sizeof(cufftReal);
   size_t complex_size = BS * D * W * (H/2 + 1) * sizeof(cufftComplex);
 
-  //float* complex_input = (float*)malloc(complex_size);
-
   cudaMalloc((void**)&d_input_complex, complex_size);
   
   cudaEventRecord(start);
@@ -361,7 +343,6 @@ cufftComplex* pre_processinput(float* input_layer, int pad, int  batch_size, int
   cufftSafeCall(cufftExecR2C(fwplan_input, pad_input_out, d_input_complex));
   cudaEventRecord(stop);
   
-  //cudaMemcpy(complex_input, d_input_complex , complex_size, cudaMemcpyDeviceToHost);
 
   cudaEventSynchronize(stop);
   milliseconds = 0;
@@ -395,7 +376,7 @@ cufftComplex* pre_process_filter(float* kernel, int pad, int* il_dim, int* kerne
     /*flip filter */
     float *f_A = NULL; cudaMalloc((void **)&f_A, out_size * fH * fW * fD * sizeof(float));
     float *f_B = NULL; cudaMalloc((void **)&f_B, out_size * fH * fW * fD * sizeof(float));
-    cudaMemcpyAsync(f_A, kernel , out_size * fH * fW * fD * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(f_A, kernel , out_size * fH * fW * fD * sizeof(float), cudaMemcpyHostToDevice);
 
     dim3 threads0(8,8,8);
     dim3 grid0(ceil(fH/8.0f),ceil(fW/8.0f),ceil(fD/8.0f));
@@ -466,7 +447,6 @@ cufftComplex* pre_process_filter(float* kernel, int pad, int* il_dim, int* kerne
     size_t real_size = out_size * D* W * H * sizeof(cufftReal);
     size_t complex_size = new_OS * D * W * (H/2 + 1) * sizeof(cufftComplex);
 
-    // float* complex_input = (float*)malloc(complex_size);
     cudaMalloc((void**)&d_input_complex, complex_size);
     cudaMemset(d_input_complex, 0, complex_size);
 
@@ -483,15 +463,12 @@ cufftComplex* pre_process_filter(float* kernel, int pad, int* il_dim, int* kerne
     cufftSafeCall(cufftExecR2C(fwplan_input, d_B, d_input_complex));
     cudaEventRecord(stop);
     
-    // cudaMemcpy(complex_input, d_input_complex , complex_size, cudaMemcpyDeviceToHost);  
-
     cudaEventSynchronize(stop);
     milliseconds = 0;
     cudaEventElapsedTime(&milliseconds, start, stop);
     conv_time += milliseconds;
 
     cudaFree(d_B);
-    // cudaFree(d_input_complex);
     cufftDestroy(fwplan_input); 
 
     cudaEventDestroy(start);
@@ -548,7 +525,7 @@ float* convolve_FFT(cufftComplex* input_layer_pad, cufftComplex* kernel, int pad
 
   err = cudaGetLastError(); if(err!=cudaSuccess){fprintf(stderr, "Failed to launch crop(error code %s)!\n", cudaGetErrorString(err)); exit(EXIT_FAILURE);}
   
-  cudaMemcpyAsync(result2, crop_out, out_size* oW*oH* sizeof(float) ,cudaMemcpyDeviceToHost);
+  cudaMemcpy(result2, crop_out, out_size* oW*oH* sizeof(float) ,cudaMemcpyDeviceToHost);
   cudaEventSynchronize(stop);
   milliseconds = 0;
   cudaEventElapsedTime(&milliseconds, start, stop);
@@ -566,7 +543,6 @@ float* convolve_FFT(cufftComplex* input_layer_pad, cufftComplex* kernel, int pad
 float* FFT::forward(int out_size, int channel, int kernel_height, int kernel_width, int pad, int stride, float* kernel, 
                     int batch_size, int height, int width, float* input_layer_without_padding, float& conv_time, float& overhead_time) {
   int il_dim[3] = {height, width, channel}; int kernel_dim[3] = {kernel_height, kernel_width, channel};
-  //cudaError_t err = cudaSuccess;
   int out_H = ((height - kernel_height + 2 * pad)/stride) + 1; 
   int out_W = ((width - kernel_width + 2 * pad)/stride) + 1; 
 
@@ -578,13 +554,9 @@ float* FFT::forward(int out_size, int channel, int kernel_height, int kernel_wid
   cudaEventCreate(&stop);
 
   int H = height+2*pad; int W = width+2*pad;
-  //int bpad = (H - kernel_height)/2;
-  //int fpad; if((H - kernel_height) % 2 == 0) fpad = bpad; else fpad = bpad + 1;  
-  //int fH = kernel_height+fpad+bpad; int fW = kernel_width+fpad+bpad; int fD = channel;
 
   cufftComplex* input_layer_pad = pre_processinput(input_layer_without_padding, pad, batch_size, il_dim, conv_time, overhead_time);
   cufftComplex* filter_complex = pre_process_filter(kernel, pad, il_dim, kernel_dim, out_size, conv_time, overhead_time);
-  //BS * D * W * (H/2 + 1) * sizeof(cufftComplex)
 
   float* final_output = (float *)malloc(batch_size * out_size * out_H * out_W * sizeof(float)); 
   
