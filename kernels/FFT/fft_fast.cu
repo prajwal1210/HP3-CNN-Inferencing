@@ -324,7 +324,7 @@ cufftComplex* pre_processinput(float* input_layer, int pad, int  batch_size, int
   
   cufftComplex* d_input_complex;
   cufftHandle fwplan_input;
-  size_t real_size = BS * D* W * H * sizeof(cufftReal);
+  // size_t real_size = BS * D* W * H * sizeof(cufftReal);
   size_t complex_size = BS * D * W * (H/2 + 1) * sizeof(cufftComplex);
 
   cudaMalloc((void**)&d_input_complex, complex_size);
@@ -444,7 +444,7 @@ cufftComplex* pre_process_filter(float* kernel, int pad, int* il_dim, int* kerne
     cufftComplex* d_input_complex;
     cufftHandle fwplan_input;
     int new_OS = out_size + 1;
-    size_t real_size = out_size * D* W * H * sizeof(cufftReal);
+    // size_t real_size = out_size * D* W * H * sizeof(cufftReal);
     size_t complex_size = new_OS * D * W * (H/2 + 1) * sizeof(cufftComplex);
 
     cudaMalloc((void**)&d_input_complex, complex_size);
