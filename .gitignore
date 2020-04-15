@@ -21,5 +21,12 @@
 
 ## Images ##
 **/*.jpg
+
 ## Data ##
 forward/data/MiniImageNet/
+
+# Ipynb checkpoints #
+**/.ipynb_checkpoints/
+
+# Ipynb checkpoints #
+**/Plots/
