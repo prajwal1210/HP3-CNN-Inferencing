@@ -1,7 +1,7 @@
 //%%cuda --name winograd_mem.cu
 #include "wingheader.h"
 
-#define MAX_B 2
+#define MAX_B 1
 #define MAX_THREAD 1024
 #define LOOP(x) for(int t##x = 0; t##x < x; t##x++)
 #define cudaSafeCall(call)  \
