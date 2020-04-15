@@ -29,8 +29,10 @@ run_vgg:
 	./test "VGG" "$(PROJECT_DIR)/pretrained-models/vgg19.pb" "IM2COL"
 	./test "VGG" "$(PROJECT_DIR)/pretrained-models/vgg19.pb" "FFT"
 	./test "VGG" "$(PROJECT_DIR)/pretrained-models/vgg19.pb" "WINOGRAD"
+	./test "VGG" "$(PROJECT_DIR)/pretrained-models/vgg19.pb"
 
 run_alex:
 	./test "ALEX" "$(PROJECT_DIR)/pretrained-models/alexnet.pb" "DIRECT"
 	./test "ALEX" "$(PROJECT_DIR)/pretrained-models/alexnet.pb" "IM2COL"
 	./test "ALEX" "$(PROJECT_DIR)/pretrained-models/alexnet.pb" "FFT"
+	./test "ALEX" "$(PROJECT_DIR)/pretrained-models/alexnet.pb"
