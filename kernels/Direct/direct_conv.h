@@ -17,7 +17,7 @@ namespace Direct {
    * Output - The output of the convolution (ON HOST)       
    */
 	float* passforward(int out_channels, int input_channels, int kernel_height, int kernel_width, int padding, int stride, 
-					          float* d_weights,int batchsize_of_data, int input_height, int input_width, float* d_input);
+					          float* d_weights,int batchsize_of_data, int input_height, int input_width, float* d_input, float &conv_time, float& overhead_time);
 }
 
 #endif

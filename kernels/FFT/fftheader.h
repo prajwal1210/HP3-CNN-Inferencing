@@ -17,7 +17,7 @@ namespace FFT {
    * Output - The output of the convolution       
    */
   float* forward(int out_size, int channel, int kernel_height, int kernel_width, int pad, int stride, float* kernel,
-              int batch_size, int height, int width, float* input_layer_without_padding);
+              int batch_size, int height, int width, float* input_layer_without_padding, float& conv_time, float& overhead_time);
 }
 
 #endif

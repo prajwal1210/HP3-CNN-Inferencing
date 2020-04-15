@@ -27,7 +27,7 @@ void CNN::loadCNNModelFromFile(const char* model_file, DeepNet::Network& net) {
 
 /* Implementation of forwardPass */
 float* CNN::forwardPass(DeepNet::Network net, int& batchsize, int& input_h, int& input_w, int& input_c, float* input, 
-                        customAlgorithmType algo, std::vector<float>& time_conv, bool& succes) {
+                        customAlgorithmType algo, std::vector<profilingElapsedTime>& time_elapsed, bool& succes) {
   Translator T;
   
   cudnnHandle_t cudnn;
@@ -57,11 +57,11 @@ float* CNN::forwardPass(DeepNet::Network net, int& batchsize, int& input_h, int&
                   << ", " << "padding = (" << conv->padding << " ," << conv->padding << "))" << " --> ";
           conv->GetOutputDims(&batchsize, &input_c, &input_h, &input_w);
           std::cout << "(" << batchsize << ", " << input_c << ", " << input_h << ", " << input_w << ")" << std::endl;
-          float time_in_ms = 0;
+          profilingElapsedTime time_in_ms;
           prev_output = output;
           output = conv->ConvForward(output, time_in_ms);
           delete [] prev_output;
-          time_conv.push_back(time_in_ms);
+          time_elapsed.push_back(time_in_ms);
           break;
         }
       case DeepNet::Layer::POOL:

@@ -237,29 +237,45 @@ __global__ void tile(int bs, int p, int q, int ch, float *devin, float *devout, 
   }
 }
 void tilehost(int p, int q, int och, int ch, int bs, int h, int w, int pad, float *devin, int oph, int opw, 
-    float *devU, float *cutY, float *devout, float *devsum, float *devfin, float *devY, float *devcutY)
-{
-        
+    float *devU, float *cutY, float *devout, float *devsum, float *devfin, float *devY, float *devcutY, float& conv_time, float& overhead_time) {
+    
+    float milliseconds = 0;
+    cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+
     dim3 grid(bs, p, q);  // 3-D
     dim3 block(ch, 1, 1); // 1-D
+    
     // call the kernel function for tiling
+    cudaEventRecord(start);
     tile<<<grid, block>>>(bs, p, q, ch, devin, devout, devsum, devY, devU, h, w, och, devfin);
-    //cudaSafeCall(cudaGetLastError());
+    cudaEventRecord(stop);
+
+    // cudaSafeCall(cudaGetLastError());
+    cudaEventSynchronize(stop);
+    milliseconds = 0;
+    cudaEventElapsedTime(&milliseconds, start, stop);
+    conv_time += milliseconds;
 
     
     size_t cutsize = bs*och*oph*opw*sizeof(float);
     dim3 cutgrid(bs*och, p, q);
     dim3 cutblock(1,1,1);
     
+    cudaEventRecord(start);
     cutpad<<<cutgrid, cutblock>>> (devY, devcutY, oph, opw);   
-    
+    cudaEventRecord(stop);
     // copy from device to host.
     //delete in;
     // cutY = (float *)malloc(cutsize);
 
     cudaSafeCall(cudaMemcpy(cutY, devcutY, cutsize, cudaMemcpyDeviceToHost));
-    
-
+    cudaSafeCall(cudaGetLastError());
+    cudaEventSynchronize(stop);
+    milliseconds = 0;
+    cudaEventElapsedTime(&milliseconds, start, stop);
+    conv_time += milliseconds;
     // return cutY;
 }
 
@@ -271,8 +287,14 @@ __global__ void ucopy(float *devtempU, float *devU, int toch, int n1, int n2, in
              devtempU[((tch*n1+tn1)*n2+tn2)] = devU[(((toch*ch+tch)*n1+tn1)*n2+tn2)];
 }
 
-float * WING::forward(int och, int ch, int bs, int h, int w, int pad, float *in, int &oph, int &opw, float *kwt)
-{
+float * WING::forward(int och, int ch, int bs, int h, int w, int pad, float *in, int &oph, int &opw, float *kwt, float& conv_time, float& overhead_time) {
+    conv_time = 0;
+    overhead_time = 0;
+    float milliseconds = 0;
+    cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+    
     float *devin, *devinnopad, *cutY, *devkwt, *devU, *devtempU;
     size_t insize = bs * ch * h * w * sizeof(float);
     int newh, neww;
@@ -299,9 +321,18 @@ float * WING::forward(int och, int ch, int bs, int h, int w, int pad, float *in,
     // call padding
     dim3 padgrid(bs*ch, newh, neww);
     dim3 padblock(1, 1, 1);
- 
+
+    cudaEventRecord(start);
     paddev<<<padgrid,padblock>>>(devin, devinnopad, h, w, pad);
+    cudaEventRecord(stop);
+
     gpu_error(cudaFree(devinnopad));
+
+    cudaEventSynchronize(stop);
+    milliseconds = 0;
+    cudaEventElapsedTime(&milliseconds, start, stop);
+    overhead_time += milliseconds;
+
     h = newh;
     w = neww;
     int p = max((h-2)/2, 0);
@@ -312,8 +343,18 @@ float * WING::forward(int och, int ch, int bs, int h, int w, int pad, float *in,
     gpu_error(cudaMalloc((void **) & devkwt, kwtsize));
     gpu_error(cudaMalloc((void **) & devU, usize));
     gpu_error(cudaMemcpy(devkwt, kwt, kwtsize, cudaMemcpyHostToDevice));
+    
+    cudaEventRecord(start);
     precompute<<<och, ch>>>(och, ch, devkwt, devU);
+    cudaEventRecord(stop);
+
     gpu_error(cudaFree(devkwt));
+
+    cudaEventSynchronize(stop);
+    milliseconds = 0;
+    cudaEventElapsedTime(&milliseconds, start, stop);
+    overhead_time += milliseconds;
+
     // float *kwt_new = (float *)malloc(ch*3*3*sizeof(float));
     int n1 = 4, n2 = 4;
     size_t tempusize = ch*4*4*sizeof(float);
@@ -345,12 +386,28 @@ float * WING::forward(int och, int ch, int bs, int h, int w, int pad, float *in,
 
     LOOP(och)
     {
-        ucopy<<<1,ch>>>(devtempU, devU, toch, n1, n2, ch);     
-        tilehost(p,q,1,ch,bs,h,w,pad,devin,oph,opw,devtempU,cuttempY,devout, devsum, devfin, devY,devcutY);
+        cudaEventRecord(start);
+        ucopy<<<1,ch>>>(devtempU, devU, toch, n1, n2, ch);
+        cudaEventRecord(stop);
+        
+        cudaEventSynchronize(stop);
+        milliseconds = 0;
+        cudaEventElapsedTime(&milliseconds, start, stop);
+        overhead_time += milliseconds;
+    
+        tilehost(p,q,1,ch,bs,h,w,pad,devin,oph,opw,devtempU,cuttempY,devout, devsum, devfin, devY, devcutY, conv_time, overhead_time);
+
+        cudaEventRecord(start);
         LOOP(bs)
             LOOP(oph)
                 LOOP(opw)
                     cutY[((((tbs*och+toch)*oph+toph)*opw)+topw)] = cuttempY[(((tbs*oph)+toph)*opw+topw)];
+        cudaEventRecord(stop);
+        cudaEventSynchronize(stop);
+        milliseconds = 0;
+        cudaEventElapsedTime(&milliseconds, start, stop);
+        overhead_time += milliseconds;
+
     }
     
     free(cuttempY);

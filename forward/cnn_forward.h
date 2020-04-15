@@ -33,6 +33,6 @@ namespace CNN {
    * Output : Pointer to the final layer output (side effect - sets the dimensions accordingly)
    */
   float* forwardPass(DeepNet::Network net, int& batchsize, int& input_h, int& input_w, int& input_c, float* input, 
-                    customAlgorithmType algo, std::vector<float>& time_conv, bool& succes);
+                    customAlgorithmType algo, std::vector<profilingElapsedTime>& time_elapsed, bool& succes);
 }
 #endif

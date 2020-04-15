@@ -51,12 +51,19 @@ void direct_convolution(int input_channels, int input_height, int input_width, i
 
 /*forward pass function declared in direc_conv.hpp library*/
 float* Direct::passforward(int out_channels, int input_channels, int kernel_height, int kernel_width, int padding, int stride, 
-                          float* weights,int batchsize_of_data, int input_height, int input_width, float* input) {
+                          float* weights,int batchsize_of_data, int input_height, int input_width, float* input, float &conv_time, float& overhead_time) {
   if(kernel_height > input_height || kernel_width > input_width){
     cout << "kernel size is too big " << endl;
     exit(EXIT_FAILURE);
   }
   
+  conv_time = 0;
+  overhead_time = 0;
+  float milliseconds = 0;
+  cudaEvent_t start, stop;
+  cudaEventCreate(&start);
+  cudaEventCreate(&stop);
+
   cudaError_t err = cudaSuccess;
   
   /* The rest of the code assumes that padding = x means x/2 on either ends hence the modification */
@@ -103,7 +110,12 @@ float* Direct::passforward(int out_channels, int input_channels, int kernel_heig
     cudaMemcpy(pad_input_in, &input[i * input_channels * input_height * input_width],
               input_height * input_width * input_channels * sizeof(float) , cudaMemcpyHostToDevice);
     
+    cudaEventRecord(start);
+          
     pad_input<<<grid1,threads1>>>(pad_input_in, pad_input_out, input_height, input_width, input_channels, padding/2);
+
+    cudaEventRecord(stop);
+
     err = cudaGetLastError(); 
     if(err!=cudaSuccess) {
       fprintf(stderr, "Failed to launch pad input (error code %s)!\n", cudaGetErrorString(err)); 
@@ -112,6 +124,11 @@ float* Direct::passforward(int out_channels, int input_channels, int kernel_heig
     
     cudaMemcpy(&h_X[i * input_channels * new_input_height * new_input_width], pad_input_out,
               new_input_height * new_input_width * input_channels * sizeof(float), cudaMemcpyDeviceToHost);
+
+    cudaEventSynchronize(stop);
+    milliseconds = 0;
+    cudaEventElapsedTime(&milliseconds, start, stop);
+    overhead_time += milliseconds;        
   }
   cudaFree(pad_input_in); 
   cudaFree(pad_input_out);
@@ -152,6 +169,8 @@ float* Direct::passforward(int out_channels, int input_channels, int kernel_heig
     fprintf(stderr, "Failed to allocate device vector d_Y (error code %s)!\n", cudaGetErrorString(err));
     exit(EXIT_FAILURE);
   }
+
+
   
   /* making sure that 1024 threads isn't crossed*/
   int tile_width = 2 , tile_height = 2;   
@@ -161,10 +180,14 @@ float* Direct::passforward(int out_channels, int input_channels, int kernel_heig
   int temp  = w_grid * h_grid;
   dim3 grid(batchsize_of_data , out_channels , temp);
   dim3 block(tile_width , tile_height , 1);
+
+  cudaEventRecord(start);
  
   /* calling the direct_convolution kernel */  
   direct_convolution<<< grid, block >>>(input_channels, input_height, input_width, out_channels, kernel_height, kernel_width, 
                                         padding, stride, H_out, W_out, w_grid, tile_width, d_X, d_W, d_Y);
+  
+  cudaEventRecord(stop);
 
   err = cudaGetLastError();
 
@@ -173,6 +196,11 @@ float* Direct::passforward(int out_channels, int input_channels, int kernel_heig
     fprintf(stderr, "Failed to launch reduce1 kernel (error code %s)!\n", cudaGetErrorString(err));
     exit(EXIT_FAILURE);
   }
+
+  cudaEventSynchronize(stop);
+  milliseconds = 0;
+  cudaEventElapsedTime(&milliseconds, start, stop);
+  conv_time += milliseconds;
 
   /* copying output matrix to host */
   err = cudaMemcpy(h_Y, d_Y, size_output_matrix, cudaMemcpyDeviceToHost);
@@ -199,7 +227,7 @@ float* Direct::passforward(int out_channels, int input_channels, int kernel_heig
     fprintf(stderr, "Failed to free device vector W (error code %s)!\n", cudaGetErrorString(err));
     exit(EXIT_FAILURE);
   }
- 
+
   /*releasing the memory*/
   free(h_X);
 

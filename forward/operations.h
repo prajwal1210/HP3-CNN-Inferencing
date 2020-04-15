@@ -43,6 +43,12 @@
     }                                                        \
 }
 
+struct profilingElapsedTime {
+  float total;
+  float overhead;
+  float conv;
+};
+
 /* Enum fot the Algorith Type to be used in Conv */
 typedef enum{
   t_CUDNN = 0,
@@ -130,22 +136,22 @@ class Conv2D {
    *  Input - Values/Inputs from the previous layer (in host memory)
    *  Output - Pointer to the result array (in host memory)
    */
-  float* ConvForward(float* input, float &time_elapsed);
+  float* ConvForward(float* input, profilingElapsedTime &time_elapsed);
 
   /* Forward Pass Operation using CUDNN in-built function */
-  float* Conv_CUDNN(float* input, float &time_elapsed);
+  float* Conv_CUDNN(float* input, profilingElapsedTime &time_elapsed);
   
   /* Forward Pass Operation using Direct Convolution Kernel */  
-  float* Conv_Direct(float* input, float &time_elapsed);
+  float* Conv_Direct(float* input, profilingElapsedTime &time_elapsed);
  
   /* Forward Pass Operation using FFT Kernel */
-  float* Conv_FFT(float* input, float &time_elapsed);
+  float* Conv_FFT(float* input, profilingElapsedTime &time_elapsed);
 
   /* Forward Pass Operation using WInograd Kernel */
-  float* Conv_Winograd(float* input, float &time_elapsed);
+  float* Conv_Winograd(float* input, profilingElapsedTime &time_elapsed);
 
   /* Forward Pass Operation using Im2Col Kernel */
-  float* Conv_Im2Col(float* input, float &time_elapsed);
+  float* Conv_Im2Col(float* input, profilingElapsedTime &time_elapsed);
   
  private:
   /* Create Descriptors: 

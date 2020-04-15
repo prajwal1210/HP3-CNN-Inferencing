@@ -49,4 +49,4 @@ output = np.reshape(output, (-1,))
 diff = cpp_output - output
 diff = np.abs(diff)
 
-print ("Maximum difference between two values of the output layer - %f"%(np.max(diff)))
+print ("Average difference between two values of the output layer - %f"%(np.average(diff)))
