@@ -24,9 +24,47 @@ void gpu_error(cudaError_t const &code) {
 
 __global__ void precompute(int och, int ch, float* kernel_weights, float *U)
 {
-    int x = threadIdx.x;
-    int bid = blockIdx.x;
-    int offset = bid*ch + x;
+    // int x = threadIdx.x;
+    // int bid = blockIdx.x;
+    // int offset = bid*ch + x;
+   
+    // float g[4][3] = {
+    //     {1, 0, 0},
+    //     {0.5, 0.5, 0.5},
+    //     {0.5, -0.5, 0.5},
+    //     {0, 0, 1}
+    // };
+    
+    // float g_t[3][4] ={
+    //     {1, 0.5, 0.5, 0},
+    //     {0, 0.5, -0.5, 0},
+    //     {0, 0.5, 0.5, 1}
+    // };
+    // float temp[3][4];// = (float *)malloc(3*4*sizeof(float));
+    // for(int i = 0; i <3; ++i)
+    // {
+    //     for(int j = 0; j <4; ++j)
+    //     {
+    //         temp[i][j] = 0;
+    //         for(int k = 0; k <3; ++k)
+    //         {
+    //             temp[i][j] += kernel_weights[offset*3*3+i*3+k] * g_t[k][j];
+    //         }
+    //     }
+    // }
+    // for(int i = 0; i <4; ++i)
+    // {
+    //     for(int j = 0; j <4; ++j)
+    //     {
+    //         U[offset*4*4+i*4+j] = 0;
+    //         for(int k = 0; k <3; ++k)
+    //         {
+    //             U[offset*4*4+i*4+j] += g[i][k] * temp[k][j];
+    //         }
+    //     }
+    // }
+    int tch = blockIdx.x;
+    int toch = threadIdx.x;
    
     float g[4][3] = {
         {1, 0, 0},
@@ -48,7 +86,7 @@ __global__ void precompute(int och, int ch, float* kernel_weights, float *U)
             temp[i][j] = 0;
             for(int k = 0; k <3; ++k)
             {
-                temp[i][j] += kernel_weights[offset*3*3+i*3+k] * g_t[k][j];
+                temp[i][j] += kernel_weights[((toch*ch + tch)*3 + i)*3+k] * g_t[k][j];
             }
         }
     }
@@ -56,10 +94,10 @@ __global__ void precompute(int och, int ch, float* kernel_weights, float *U)
     {
         for(int j = 0; j <4; ++j)
         {
-            U[offset*4*4+i*4+j] = 0;
+            U[((toch*ch + tch)*4 + i)*4+j] = 0;
             for(int k = 0; k <3; ++k)
             {
-                U[offset*4*4+i*4+j] += g[i][k] * temp[k][j];
+                U[((toch*ch + tch)*4 + i)*4+j] += g[i][k] * temp[k][j];
             }
         }
     }
@@ -563,7 +601,7 @@ float * WING::forward(int och, int ch, int bs, int h, int w, int pad, float *in,
     gpu_error(cudaMalloc((void **) & devkwt, kwtsize));
     gpu_error(cudaMalloc((void **) & devU, usize));
     gpu_error(cudaMemcpy(devkwt, kwt, kwtsize, cudaMemcpyHostToDevice));
-    precompute<<<och, ch>>>(och, ch, devkwt, devU);
+    precompute<<<ch, och>>>(och, ch, devkwt, devU);
     gpu_error(cudaFree(devkwt));
     // float *kwt_new = (float *)malloc(ch*3*3*sizeof(float));
     // int n1 = 4, n2 = 4;
@@ -602,8 +640,10 @@ float * WING::forward(int och, int ch, int bs, int h, int w, int pad, float *in,
     tile<<<grid, block>>>(bs, p, q, ch, devin, devsum, devU, h, w, och, devfin);
     // float *out = (float *)malloc(finsize);
     // cudaSafeCall(cudaMemcpy(out, devfin, finsize, cudaMemcpyDeviceToHost));
-    float *out = (float *)malloc(sumsize);
-    cudaSafeCall(cudaMemcpy(out, devsum, sumsize, cudaMemcpyDeviceToHost));
+    float *out = (float *)malloc(usize);
+    cudaSafeCall(cudaMemcpy(out, devU, usize, cudaMemcpyDeviceToHost));
+    // float *out = (float *)malloc(sumsize);
+    // cudaSafeCall(cudaMemcpy(out, devsum, sumsize, cudaMemcpyDeviceToHost));
     gpu_error(cudaFree(devfin));
     gpu_error(cudaFree(devin));    
     gpu_error(cudaFree(devU));

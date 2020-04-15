@@ -318,8 +318,10 @@ float * WING::forward(int och, int ch, int bs, int h, int w, int pad, float *in,
     cudaSafeCall(cudaGetLastError());
     // float *out = (float *)malloc(outsize);
     // cudaSafeCall(cudaMemcpy(out, devout, outsize, cudaMemcpyDeviceToHost));
-        float *out = (float *)malloc(sumsize);
-    cudaSafeCall(cudaMemcpy(out, devsum, sumsize, cudaMemcpyDeviceToHost));
+    //     float *out = (float *)malloc(sumsize);
+    // cudaSafeCall(cudaMemcpy(out, devsum, sumsize, cudaMemcpyDeviceToHost));
+          float *out = (float *)malloc(usize);
+    cudaSafeCall(cudaMemcpy(out, devU, usize, cudaMemcpyDeviceToHost));
     // whatev = devout;
     gpu_error(cudaFree(devin));
     // gpu_error(cudaFree(devout));
@@ -344,4 +346,5 @@ float * WING::forward(int och, int ch, int bs, int h, int w, int pad, float *in,
     gpu_error(cudaFree(devcutY));
 
     return cutY;
+    // return out;
 }

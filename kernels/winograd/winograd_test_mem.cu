@@ -16,8 +16,14 @@ int main(void)
     // w = 32;
     // och = 10;
     // pad = 0;
-    bs = 2;
-    ch = 3;
+    // bs = 8;
+    // ch = 16;
+    // h = 256;
+    // w = 256;
+    // och = 64;
+    // pad = 0;
+     bs = 2;
+    ch = 2;
     h = 5;
     w = 5;
     och = 2;
@@ -30,14 +36,7 @@ int main(void)
     float *kernel_weights = new float[tsize];
     float *tkw = kernel_weights;
     //put kernel weights
-    LOOP(tsize)
-    {
-        tkw[ttsize] = 0;
-    }
-   tkw[0] = tkw[8] = 1;
-    tkw[9] = tkw[17] = 2;
-    tkw[18] = tkw[26] = 3;
-    tkw[27] = tkw[35] = 4;
+    
     LOOP(bs)
     {
         LOOP(ch)
@@ -51,13 +50,21 @@ int main(void)
             }
         }
     }
-    
-    cout<<"\nConvolving\n";
+     LOOP(tsize)
+    {
+        tkw[ttsize] = rng(engine);
+    }
+   tkw[0] = tkw[8] = 1;
+    tkw[9] = tkw[17] = 2;
+    tkw[18] = tkw[26] = 3;
+    tkw[27] = tkw[35] = 4;
+
+   // cout<<"\nConvolving\n";
     
     int oph, opw; //output height, output weight
     cutY = WING::forward(och, ch, bs, h, w, pad, in, oph, opw, kernel_weights);
 
-    cout<<"\nConvolution finished\n\n";
+    //cout<<"\nConvolution finished\n\n";
       
     LOOP(bs)
     {
@@ -79,6 +86,26 @@ int main(void)
     }
     cout<<"}\n";
     // int n1 = 4, n2 = 4;
+    //  LOOP(och)
+    // {
+    //     cout<<"{ ";
+    //     LOOP(ch)
+    //     {
+    //         cout<<"{ ";
+    //         LOOP(n1)
+    //         {
+    //             LOOP(n2)
+    //             {
+    //                 cout<<cutY[((toch*ch+tch)*n1+tn1)*n2+tn2]<<",";
+    //             }
+    //             cout<<";\n";
+    //         }
+    //         cout<<"}\n";
+    //     }
+    //     cout<<"}\n";
+    // }
+    // cout<<"}\n";
+
     // int p = 2, q = 2;
     // // ch = 2;
 
