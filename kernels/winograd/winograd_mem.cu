@@ -1,6 +1,7 @@
 //%%cuda --name winograd.cu
 #include "wingheader.h"
 
+#define MAX_B 1
 #define LOOP(x) for(int t##x = 0; t##x < x; t##x++)
 #define cudaSafeCall(call)  \
         do {\
@@ -24,9 +25,9 @@ void gpu_error(cudaError_t const &code) {
 
 __global__ void precompute(int och, int ch, float* kernel_weights, float *U)
 {
-    int x = threadIdx.x;
-    int bid = blockIdx.x;
-    int offset = bid*ch + x;
+    // int x = threadIdx.x;
+    // int bid = blockIdx.x;
+    // int offset = bid*ch + x;
 
     int tch = blockIdx.x;
     int toch = threadIdx.x;
@@ -120,7 +121,7 @@ __global__ void tile(int bs, int p, int q, int ch, float *devin, float *devsum, 
     float V[4][4];// = (float *)  malloc(16*sizeof(float));
     // if(Tch%och==0)
     // {
-    tch = Tch /och;
+    tch = Tch / och;
     // copy the tiles to thrtile
     int offset1 = (tbs*ch + tch)*h*w;
     for(int th = 2*tp, i = 0; i < 4; th++, i++)
@@ -296,7 +297,8 @@ float * WING::forward(int och, int ch, int bs, int h, int w, int pad, float *in,
      int p = max((h-2)/2, 0);
     int q = max((w-2)/2, 0);
 
-    size_t finsize = bs * p * q * ch * och * 4 * 4 * sizeof(float);
+    //size_t finsize = bs * p * q * ch * och * 4 * 4 * sizeof(float);
+    size_t finsize = MAX_B * p * q * ch * och * 4 * 4 * sizeof(float);
    // size_t outsize = bs * och * p * q * ch * 4 * 4 * sizeof(float);
     size_t sumsize = bs * och * p * q * 4 * 4 * sizeof(float);
     size_t ysize = bs * och * p * q * 2 * 2 * sizeof(float);
@@ -306,28 +308,57 @@ float * WING::forward(int och, int ch, int bs, int h, int w, int pad, float *in,
     gpu_error(cudaMalloc((void **) & devsum, sumsize));
 
     gpu_error(cudaMalloc((void **) & devfin, finsize));
-    
+    // printf("%d %d %d\n", insize, sumsize, finsize);
 
     // call the kernel function for precomputing
     
     
-    dim3 grid(bs, p, q);  // 3-D
+    // dim3 grid(bs, p, q);  // 3-D
     dim3 block(ch*och, 1, 1); // 1-D
-    // call the kernel function for tiling
-    tile<<<grid, block>>>(bs, p, q, ch, devin, devsum, devU, h, w, och, devfin);
+    // // call the kernel function for tiling
+    // tile<<<grid, block>>>(bs, p, q, ch, devin, devsum, devU, h, w, och, devfin);
+
+    // gpu_error(cudaFree(devfin));
+    // gpu_error(cudaFree(devin));    
+    // gpu_error(cudaFree(devU));
+
+    // // cudaSafeCall(cudaGetLastError());
+
+    // //gpu_error(cudaFree(devout));
+    // dim3 block2(och, 1, 1);
+    // gpu_error(cudaMalloc((void **) & devY, ysize));
+    // lastcal<<<grid,block2>>>(och, p, q, bs, devsum, devY);
+ 
+    // __global__ float * t_devin = devin;
+    // __global__ float * t_devsum = devsum;
+    size_t binsize = ch * newh * neww ;
+    size_t dsumsize = och * p * q * 4 * 4 ;
+    int bsg = (bs+MAX_B-1)/MAX_B;
+    int prevb = 0;
+    LOOP(bsg)
+    {
+        int currb = MAX_B;
+        if(tbsg == bsg-1 && bs % MAX_B != 0)
+            currb = bs % MAX_B;
+        //printf("%d %d\n", currb, tbsg);
+        dim3 grid(currb, p, q); 
+        tile<<<grid, block>>>(currb, p, q, ch, devin + prevb*binsize, devsum + prevb*dsumsize, devU, h, w, och, devfin);
+        // t_devin += currb * binsize;
+        // t_devsum += currb * dsumsize;
+        prevb  += currb;
+    }
 
     gpu_error(cudaFree(devfin));
     gpu_error(cudaFree(devin));    
     gpu_error(cudaFree(devU));
 
-    // cudaSafeCall(cudaGetLastError());
-
     //gpu_error(cudaFree(devout));
+    dim3 grid2(bs, p, q);
     dim3 block2(och, 1, 1);
     gpu_error(cudaMalloc((void **) & devY, ysize));
-    lastcal<<<grid,block2>>>(och, p, q, bs, devsum, devY);
+    lastcal<<<grid2,block2>>>(och, p, q, bs, devsum, devY);
     gpu_error(cudaFree(devsum));
-    
+
     dim3 cutgrid(bs*och, p, q);
     dim3 cutblock(1,1,1);
     
@@ -335,7 +366,6 @@ float * WING::forward(int och, int ch, int bs, int h, int w, int pad, float *in,
     gpu_error(cudaMalloc((void **) & devcutY, cutsize));
     cutpad<<<cutgrid, cutblock>>> (devY, devcutY, oph, opw);   
     gpu_error(cudaFree(devY));
-
 
     cudaSafeCall(cudaMemcpy(cutY, devcutY, cutsize, cudaMemcpyDeviceToHost));
     
