@@ -31,18 +31,20 @@ __global__ void precompute(int och, int ch, float* kernel_weights, float *U)
     int toch = threadIdx.x;
    
     float au, bu, cu, du, eu, fu, gu, hu, iu;
-    int ind = 0;
+    // int ind = 0;
     int offset = (toch*ch + tch)*9;
 
-    au = ACCESS(kernel_weights, offset, ind++);
-    bu = ACCESS(kernel_weights, offset, ind++);
-    cu = ACCESS(kernel_weights, offset, ind++);
-    du = ACCESS(kernel_weights, offset, ind++);
-    eu = ACCESS(kernel_weights, offset, ind++);
-    fu = ACCESS(kernel_weights, offset, ind++);
-    gu = ACCESS(kernel_weights, offset, ind++);
-    hu = ACCESS(kernel_weights, offset, ind++);
-    iu = ACCESS(kernel_weights, offset, ind++);
+    au = ACCESS(kernel_weights, offset, 0);
+    bu = ACCESS(kernel_weights, offset, 1);
+    cu = ACCESS(kernel_weights, offset, 2);
+    du = ACCESS(kernel_weights, offset, 3);
+    eu = ACCESS(kernel_weights, offset, 4);
+    fu = ACCESS(kernel_weights, offset, 5);
+    gu = ACCESS(kernel_weights, offset, 6);
+    hu = ACCESS(kernel_weights, offset, 7);
+    iu = ACCESS(kernel_weights, offset, 8);
+
+    __syncthreads();
     
     ind = 0;
     offset = (toch*ch + tch)*16;
@@ -55,22 +57,24 @@ __global__ void precompute(int och, int ch, float* kernel_weights, float *U)
     b_eh = bu-eu+hu;
     c_fi = cu-fu+iu;
     
-    ACCESS(U, offset, ind++) = au;
-    ACCESS(U, offset, ind++) = 0.5*(au+bu+cu);
-    ACCESS(U, offset, ind++) = 0.5*(au-bu+cu);
-    ACCESS(U, offset, ind++) = cu;
-    ACCESS(U, offset, ind++) = 0.5*(adg);
-    ACCESS(U, offset, ind++) = 0.25*(adg+beh+cfi);
-    ACCESS(U, offset, ind++) = 0.25*(adg-beh+cfi);
-    ACCESS(U, offset, ind++) = 0.5*(cfi);
-    ACCESS(U, offset, ind++) = 0.5*(a_dg);
-    ACCESS(U, offset, ind++) = 0.25*(a_dg+b_eh+c_fi);
-    ACCESS(U, offset, ind++) = 0.25*(a_dg-b_eh+c_fi);
-    ACCESS(U, offset, ind++) = 0.5*(c_fi);
-    ACCESS(U, offset, ind++) = gu;
-    ACCESS(U, offset, ind++) = 0.5*(gu+hu+iu);
-    ACCESS(U, offset, ind++) = 0.5*(gu-hu+iu);
-    ACCESS(U, offset, ind++) = iu;
+    __syncthreads();
+
+    ACCESS(U, offset, 0) = au;
+    ACCESS(U, offset, 1) = 0.5*(au+bu+cu);
+    ACCESS(U, offset, 2) = 0.5*(au-bu+cu);
+    ACCESS(U, offset, 3) = cu;
+    ACCESS(U, offset, 4) = 0.5*(adg);
+    ACCESS(U, offset, 5) = 0.25*(adg+beh+cfi);
+    ACCESS(U, offset, 6) = 0.25*(adg-beh+cfi);
+    ACCESS(U, offset, 7) = 0.5*(cfi);
+    ACCESS(U, offset, 8) = 0.5*(a_dg);
+    ACCESS(U, offset, 9) = 0.25*(a_dg+b_eh+c_fi);
+    ACCESS(U, offset, 10) = 0.25*(a_dg-b_eh+c_fi);
+    ACCESS(U, offset, 11) = 0.5*(c_fi);
+    ACCESS(U, offset, 12) = gu;
+    ACCESS(U, offset, 13) = 0.5*(gu+hu+iu);
+    ACCESS(U, offset, 14) = 0.5*(gu-hu+iu);
+    ACCESS(U, offset, 15) = iu;
     
 }
 
