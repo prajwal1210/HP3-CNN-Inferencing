@@ -222,27 +222,28 @@ __global__ void tile2(int bs, int p, int q, int ch, float *devin, float *devsum,
     //     for(int tw = 2*tq, j = 0; j < 4; tw++, j++)
     //         thrtile[i][j] = devin[offset1 + th*w + tw];
 
+    int offset1 = (tbs*ch + tch)*h*w;
     float av, bv, cv, dv, ev, fv, gv, hv, iv, jv, kv, lv, mv, nv, ov, pv;
     int th = 2*tp, tw = 2*tq;
-    av = ACCESS(devin, offset1, th*w + tw++)
-    bv = ACCESS(devin, offset1, th*w + tw++)
-    cv = ACCESS(devin, offset1, th*w + tw++)
-    dv = ACCESS(devin, offset1, th*w + tw++)
+    av = ACCESS(devin, offset1, th*w + tw++);
+    bv = ACCESS(devin, offset1, th*w + tw++);
+    cv = ACCESS(devin, offset1, th*w + tw++);
+    dv = ACCESS(devin, offset1, th*w + tw++);
     th++; tw = 0;
-    ev = ACCESS(devin, offset1, th*w + tw++)
-    fv = ACCESS(devin, offset1, th*w + tw++)
-    gv = ACCESS(devin, offset1, th*w + tw++)
-    hv = ACCESS(devin, offset1, th*w + tw++)
+    ev = ACCESS(devin, offset1, th*w + tw++);
+    fv = ACCESS(devin, offset1, th*w + tw++);
+    gv = ACCESS(devin, offset1, th*w + tw++);
+    hv = ACCESS(devin, offset1, th*w + tw++);
     th++; tw = 0;
-    iv = ACCESS(devin, offset1, th*w + tw++)
-    jv = ACCESS(devin, offset1, th*w + tw++)
-    kv = ACCESS(devin, offset1, th*w + tw++)
-    lv = ACCESS(devin, offset1, th*w + tw++)
+    iv = ACCESS(devin, offset1, th*w + tw++);
+    jv = ACCESS(devin, offset1, th*w + tw++);
+    kv = ACCESS(devin, offset1, th*w + tw++);
+    lv = ACCESS(devin, offset1, th*w + tw++);
     th++; tw = 0;
-    mv = ACCESS(devin, offset1, th*w + tw++)
-    nv = ACCESS(devin, offset1, th*w + tw++)
-    ov = ACCESS(devin, offset1, th*w + tw++)
-    pv = ACCESS(devin, offset1, th*w + tw++)
+    mv = ACCESS(devin, offset1, th*w + tw++);
+    nv = ACCESS(devin, offset1, th*w + tw++);
+    ov = ACCESS(devin, offset1, th*w + tw++);
+    pv = ACCESS(devin, offset1, th*w + tw++);
     
     //Calculation of V
     int vx = 0, vy = 0;
