@@ -14,7 +14,8 @@ PROTO_LIBRARY = $(shell find $(PROJECT_DIR) -name network.pb.cc)
 DIRECT_CONV = $(shell find $(PROJECT_DIR) -name direct_conv.cu)
 FFT_FILE = fft_fast.cu
 FFT_KERNEL = $(shell find $(PROJECT_DIR) -name $(FFT_FILE))
-WINOGRAD_KERNEL = $(shell find $(PROJECT_DIR) -name winograd_mem_out.cu)
+WINOGRAD_FILE = winograd_fast.cu
+WINOGRAD_KERNEL = $(shell find $(PROJECT_DIR) -name $(WINOGRAD_FILE))
 IM2COL_KERNEL = $(shell find $(PROJECT_DIR) -name im2col.cu)
 
 test: batch_test.cc $(OPERATIONS_LIBRARY) $(CNN_FORWARD_LIBRARY) $(DATA_UTIL_LIBRARY) $(TRANSLATOR_LIBRARY) $(PROTO_LIBRARY) $(FFT_KERNEL) $(DIRECT_CONV) $(WINOGRAD_KERNEL) $(IM2COL_KERNEL)
