@@ -1,4 +1,4 @@
-#include "winograd.cu"
+#include "winograd_mem_out.cu"
 
 #include<random>
 #define LOOP(x) for(int t##x = 0; t##x < x; t##x++)
@@ -16,7 +16,13 @@ int main(void)
     // w = 32;
     // och = 10;
     // pad = 0;
-    bs = 2;
+// bs = 8;
+//     ch = 3;
+//     h = 256;
+//     w = 256;
+//     och = 64;
+//     pad = 0;
+     bs = 2;
     ch = 2;
     h = 5;
     w = 5;
@@ -30,14 +36,7 @@ int main(void)
     float *kernel_weights = new float[tsize];
     float *tkw = kernel_weights;
     //put kernel weights
-    LOOP(tsize)
-    {
-        tkw[ttsize] = 0;
-    }
-   tkw[0] = tkw[8] = 1;
-    tkw[9] = tkw[17] = 2;
-    tkw[18] = tkw[26] = 3;
-    tkw[27] = tkw[35] = 4;
+   
     LOOP(bs)
     {
         LOOP(ch)
@@ -51,31 +50,36 @@ int main(void)
             }
         }
     }
-    LOOP(bs)
+     LOOP(tsize)
     {
-        cout<<"{ ";
-        LOOP(ch)
-        {
-            cout<<"{ ";
-            LOOP(h)
-            {
-                cout<<"{ ";
-                LOOP(w)
-                {
-                    cout<<in[((tbs*ch+tch)*h+th)*w+tw]<<" ";
-                }
-                cout<<"}\n";
-            }
-            cout<<"}\n";
-        }
-        cout<<"}\n";
+        tkw[ttsize] = rng(engine);
     }
-    cout<<"\nConvolving\n";
+   tkw[0] = tkw[8] = 1;
+    tkw[9] = tkw[17] = 2;
+    tkw[18] = tkw[26] = 3;
+    tkw[27] = tkw[35] = 4;
+
+    // LOOP(bs)
+    // {
+    //     LOOP(ch)
+    //     {
+    //         LOOP(kh)
+    //         {
+    //             LOOP(kw)
+    //             {
+    //                 *(t++) = rng(engine);
+    //             }
+    //         }
+    //     }
+    // }
+    
+    //cout<<"\nConvolving\n";
     
     int oph, opw; //output height, output weight
     cutY = WING::forward(och, ch, bs, h, w, pad, in, oph, opw, kernel_weights);
-
-    cout<<"\nConvolution finished\n\n";
+    float conv_time, overhead_time;
+    //cutY = IM2COL::forward(och, ch, 3, 3, pad, 1, kernel_weights , bs, h, w, in, conv_time, overhead_time);
+    //cout<<"\nConvolution finished\n\n";
       
     LOOP(bs)
     {
@@ -96,5 +100,72 @@ int main(void)
         cout<<"}\n";
     }
     cout<<"}\n";
+    // int n1 = 4, n2 = 4;
+    // int p = 2, q = 2;
+    // LOOP(och)
+    // {
+    //     cout<<"{ ";
+    //     LOOP(ch)
+    //     {
+    //         cout<<"{ ";
+    //         LOOP(n1)
+    //         {
+    //             LOOP(n2)
+    //             {
+    //                 cout<<cutY[((toch*ch+tch)*n1+tn1)*n2+tn2]<<",";
+    //             }
+    //             cout<<";\n";
+    //         }
+    //         cout<<"}\n";
+    //     }
+    //     cout<<"}\n";
+    // }
+    // cout<<"}\n";
+    // ch = 2;
+
+    // (((((tbs*och+toch)*p+tp)*q+tq)*ch+tch)*n1 + tn1)*n2 + tn2
+    // (((((tbs*p+tp)*q+tq)*ch+tch)*och+toch)*n1+tn1)*n2+tn2
+
+    // LOOP(bs)
+    // {
+    //     cout<<"{ ";
+    //     LOOP(och)
+    //     {
+    //         cout<<"{ ";
+    //         LOOP(p)
+    //         {
+    //             cout<<"{ ";
+    //             LOOP(q)
+    //             {
+    //                 cout<<"{ ";
+    //                 LOOP(ch)
+    //                 {
+    //                     cout<<"{ ";
+    //                     LOOP(n1)
+    //                         {
+    //                             cout<<"{ ";
+    //                             LOOP(n2)
+    //                             {   
+    //                                 cout<<cutY[(((((tbs*och+toch)*p+tp)*q+tq)*1+0)*n1 + tn1)*n2 + tn2]<<" ";
+    //                             }
+    //                         cout<<"}\n";
+    //                         }
+    //                     cout<<"}\n";
+    //                 }
+    //                 cout<<"}\n";
+    //                 break;
+    //             }
+    //             cout<<"}\n";
+    //                 break;
+
+    //         }
+    //     cout<<"}\n";
+    //                 break;
+
+    //     }
+    // cout<<"}\n";
+    //                 break;
+
+    // }
     return 0;
 }
