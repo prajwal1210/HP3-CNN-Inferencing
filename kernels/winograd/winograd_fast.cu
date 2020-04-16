@@ -48,6 +48,12 @@ __global__ void precompute(int och, int ch, float* kernel_weights, float *U)
     offset = ((toch*ch + tch)*16;
 
     float adg, beh, cfi, a_dg, b_eh, c_fi;
+    adg = au+du+gu;
+    beh = bu+eu+hu;
+    cfi = cu+fu+iu;
+    a_dg = au-du+gu;
+    b_eh = bu-eu+hu;
+    c_fi = cu-fu+iu;
     
     ACCESS(U, offset, ind++) = a;
     ACCESS(U, offset, ind++) = 0.5*(a+b+c);
