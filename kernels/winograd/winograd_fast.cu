@@ -13,6 +13,7 @@
                 exit(EXIT_FAILURE);\
             }\
         } while(0)
+#define ACCESS(arr, off, ind) (arr[(off) + (ind)])
 
 
 void gpu_error(cudaError_t const &code) {
@@ -297,28 +298,26 @@ __global__ void lastcal(int och, int p, int q, int bs, float *devsum, float *dev
     tq = blockIdx.z;
     toch = threadIdx.x;
 
-  float A_t[2][4] = {
-        {1, 1, 1, 0},
-        {0, 1, -1,-1}
-    };
-    float A[4][2] = {
-        {1,0},
-        {1,1},
-        {1,-1},
-        {0,-1}
-    };
-    float temp[2][4];
-    for(int i = 0; i <2; ++i)
-    {
-        for(int j = 0; j <4; ++j)
-        {
-            temp[i][j] = 0;
-            for(int k = 0; k <4; ++k)
-            {
-                temp[i][j] += A_t[i][k] * devsum[((((tbs*och+toch)*p+tp)*q+tq)*4+k)*4+j];
-            }
-        }
-    }
+    int offset = (((tbs*och+toch)*p+tp)*q+tq)*16;
+    int a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p;
+    int ind = 0;
+    a = ACCESS(devsum, offset, ind++);
+    b = ACCESS(devsum, offset, ind++);
+    c = ACCESS(devsum, offset, ind++);
+    d = ACCESS(devsum, offset, ind++);
+    e = ACCESS(devsum, offset, ind++);
+    f = ACCESS(devsum, offset, ind++);
+    g = ACCESS(devsum, offset, ind++);
+    h = ACCESS(devsum, offset, ind++);
+    i = ACCESS(devsum, offset, ind++);
+    j = ACCESS(devsum, offset, ind++);
+    k = ACCESS(devsum, offset, ind++);
+    l = ACCESS(devsum, offset, ind++);
+    m = ACCESS(devsum, offset, ind++);
+    n = ACCESS(devsum, offset, ind++);
+    o = ACCESS(devsum, offset, ind++);
+    p = ACCESS(devsum, offset, ind++);
+    
     for(int i = 0; i <2; ++i)
     {
         for(int j = 0; j <2; ++j)
