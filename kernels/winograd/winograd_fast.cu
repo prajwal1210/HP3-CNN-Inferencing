@@ -30,42 +30,42 @@ __global__ void precompute(int och, int ch, float* kernel_weights, float *U)
     int tch = blockIdx.x;
     int toch = threadIdx.x;
    
-    float g[4][3] = {
-        {1, 0, 0},
-        {0.5, 0.5, 0.5},
-        {0.5, -0.5, 0.5},
-        {0, 0, 1}
-    };
-    
-    float g_t[3][4] ={
-        {1, 0.5, 0.5, 0},
-        {0, 0.5, -0.5, 0},
-        {0, 0.5, 0.5, 1}
-    };
-    float temp[3][4];
-    for(int i = 0; i <3; ++i)
-    {
-        for(int j = 0; j <4; ++j)
-        {
-            temp[i][j] = 0;
-            for(int k = 0; k <3; ++k)
-            {
-                temp[i][j] += kernel_weights[((toch*ch + tch)*3 + i)*3+k] * g_t[k][j];
-            }
-        }
-    }
-    for(int i = 0; i <4; ++i)
-    {
-        for(int j = 0; j <4; ++j)
-        {
-            U[((toch*ch + tch)*4 + i)*4+j] = 0;
-            for(int k = 0; k <3; ++k)
-            {
-                U[((toch*ch + tch)*4 + i)*4+j] += g[i][k] * temp[k][j];
-            }
-        }
-    }
+    float au, bu, cu, du, eu, fu, gu, hu, iu;
+    int ind = 0;
+    int offset = (toch*ch + tch)*9;
 
+    au = ACCESS(kernel_weights, offset, ind++);
+    bu = ACCESS(kernel_weights, offset, ind++);
+    cu = ACCESS(kernel_weights, offset, ind++);
+    du = ACCESS(kernel_weights, offset, ind++);
+    eu = ACCESS(kernel_weights, offset, ind++);
+    fu = ACCESS(kernel_weights, offset, ind++);
+    gu = ACCESS(kernel_weights, offset, ind++);
+    hu = ACCESS(kernel_weights, offset, ind++);
+    iu = ACCESS(kernel_weights, offset, ind++);
+    
+    ind = 0;
+    offset = ((toch*ch + tch)*16;
+
+    float adg, beh, cfi, a_dg, b_eh, c_fi;
+    
+    ACCESS(U, offset, ind++) = a;
+    ACCESS(U, offset, ind++) = 0.5*(a+b+c);
+    ACCESS(U, offset, ind++) = 0.5*(a-b+c);
+    ACCESS(U, offset, ind++) = c;
+    ACCESS(U, offset, ind++) = 0.5*(adg);
+    ACCESS(U, offset, ind++) = 0.25*(adg+beh+cfi);
+    ACCESS(U, offset, ind++) = 0.25*(adg-beh+cfi);
+    ACCESS(U, offset, ind++) = 0.5*(cfi);
+    ACCESS(U, offset, ind++) = 0.5*(a_dg);
+    ACCESS(U, offset, ind++) = 0.25*(a_dg+b_eh+c_fi);
+    ACCESS(U, offset, ind++) = 0.25*(a_dg-b_eh+c_fi);
+    ACCESS(U, offset, ind++) = 0.5*(c_fi);
+    ACCESS(U, offset, ind++) = g;
+    ACCESS(U, offset, ind++) = 0.5*(g+h+i);
+    ACCESS(U, offset, ind++) = 0.5*(g-h+i);
+    ACCESS(U, offset, ind++) = i;
+    
 }
 
 
