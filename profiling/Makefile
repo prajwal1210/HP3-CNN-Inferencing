@@ -34,7 +34,7 @@ run_vgg:
 	./test "VGG" "$(PROJECT_DIR)/pretrained-models/vgg19.pb"
 
 run_alex:
-	rm -f logVGG.txt
+	rm -f logALEX.txt
 	./test "ALEX" "$(PROJECT_DIR)/pretrained-models/alexnet.pb" "DIRECT"
 	./test "ALEX" "$(PROJECT_DIR)/pretrained-models/alexnet.pb" "IM2COL"
 	./test "ALEX" "$(PROJECT_DIR)/pretrained-models/alexnet.pb" "FFT"
