@@ -299,32 +299,32 @@ __global__ void lastcal(int och, int p, int q, int bs, float *devsum, float *dev
     toch = threadIdx.x;
 
     int offset = (((tbs*och+toch)*p+tp)*q+tq)*16;
-    int a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p;
+    int ay, by, cy, dy, ey, fy, gy, hy, iy, jy, ky, ly, my, ny, oy, py;
     int ind = 0;
-    a = ACCESS(devsum, offset, ind++);
-    b = ACCESS(devsum, offset, ind++);
-    c = ACCESS(devsum, offset, ind++);
-    d = ACCESS(devsum, offset, ind++);
-    e = ACCESS(devsum, offset, ind++);
-    f = ACCESS(devsum, offset, ind++);
-    g = ACCESS(devsum, offset, ind++);
-    h = ACCESS(devsum, offset, ind++);
-    i = ACCESS(devsum, offset, ind++);
-    j = ACCESS(devsum, offset, ind++);
-    k = ACCESS(devsum, offset, ind++);
-    l = ACCESS(devsum, offset, ind++);
-    m = ACCESS(devsum, offset, ind++);
-    n = ACCESS(devsum, offset, ind++);
-    o = ACCESS(devsum, offset, ind++);
-    p = ACCESS(devsum, offset, ind++);
+    ay = ACCESS(devsum, offset, ind++);
+    by = ACCESS(devsum, offset, ind++);
+    cy = ACCESS(devsum, offset, ind++);
+    dy = ACCESS(devsum, offset, ind++);
+    ey = ACCESS(devsum, offset, ind++);
+    fy = ACCESS(devsum, offset, ind++);
+    gy = ACCESS(devsum, offset, ind++);
+    hy = ACCESS(devsum, offset, ind++);
+    iy = ACCESS(devsum, offset, ind++);
+    jy = ACCESS(devsum, offset, ind++);
+    ky = ACCESS(devsum, offset, ind++);
+    ly = ACCESS(devsum, offset, ind++);
+    my = ACCESS(devsum, offset, ind++);
+    ny = ACCESS(devsum, offset, ind++);
+    oy = ACCESS(devsum, offset, ind++);
+    py = ACCESS(devsum, offset, ind++);
     
     ind = 0;
     offset = (((tbs*och+toch)*p+tp)*q+tq)*4;
     
-    ACCESS(devY, offset, ind++) = a+e+i+b+f+j+c+g+k;
-    ACCESS(devY, offset, ind++) = b+f+j-c-g-k-d-h-l;
-    ACCESS(devY, offset, ind++) = e-i-m+f-j-n+g-k-o;
-    ACCESS(devY, offset, ind++) = f-j-n-g+k+o-h+l+p;
+    ACCESS(devY, offset, ind++) = ay+ey+iy+by+fy+jy+cy+gy+ky;
+    ACCESS(devY, offset, ind++) = by+fy+jy-cy-gy-ky-dy-hy-ly;
+    ACCESS(devY, offset, ind++) = ey-iy-my+fy-jy-ny+gy-ky-oy;
+    ACCESS(devY, offset, ind++) = fy-jy-ny-gy+ky+oy-hy+ly+py;
 }
 
 
