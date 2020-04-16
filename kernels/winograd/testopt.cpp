@@ -3,6 +3,9 @@
 #include <algorithm>
 
 #define ACCESS(arr, off, ind) (arr[(off) + (ind)])
+#define ACCESS2D(arr, indx, indy) ((arr)[(indx)][(indy)])
+#define MAX_B 1
+#define MAX_THREAD 1024
 
 using namespace std;
 
@@ -86,11 +89,149 @@ void lastcal2(int och, int p, int q, int bs, float *devsum, float *devY)
     }
 }
 
+void tile1(int bs, int p, int q, int ch, float *devin, int h, int w, int och)
+{
+    int tbs, tp, tq, tch, tbsf, x;
+    tbsf = 0;
+    tp = 0;
+    tq = 0;
+    x = 0;
+    tbs = tbsf%bs;
+
+    int och_pb = MAX_THREAD/ch;
+    int tf = tbsf / bs;
+    int toch = x/ch + tf*(och_pb);
+    tch = x%ch; 
+
+    float V[4][4];
+    
+    int offset1 = (tbs*ch + tch)*h*w;
+    float av, bv, cv, dv, ev, fv, gv, hv, iv, jv, kv, lv, mv, nv, ov, pv;
+    int th = 2*tp, tw = 2*tq;
+    av = ACCESS(devin, offset1, th*w + tw++);
+    bv = ACCESS(devin, offset1, th*w + tw++);
+    cv = ACCESS(devin, offset1, th*w + tw++);
+    dv = ACCESS(devin, offset1, th*w + tw++);
+    th++; tw = 0;
+    ev = ACCESS(devin, offset1, th*w + tw++);
+    fv = ACCESS(devin, offset1, th*w + tw++);
+    gv = ACCESS(devin, offset1, th*w + tw++);
+    hv = ACCESS(devin, offset1, th*w + tw++);
+    th++; tw = 0;
+    iv = ACCESS(devin, offset1, th*w + tw++);
+    jv = ACCESS(devin, offset1, th*w + tw++);
+    kv = ACCESS(devin, offset1, th*w + tw++);
+    lv = ACCESS(devin, offset1, th*w + tw++);
+    th++; tw = 0;
+    mv = ACCESS(devin, offset1, th*w + tw++);
+    nv = ACCESS(devin, offset1, th*w + tw++);
+    ov = ACCESS(devin, offset1, th*w + tw++);
+    pv = ACCESS(devin, offset1, th*w + tw++);
+    
+    //Calculation of V
+    int vx = 0, vy = 0;
+    ACCESS2D(V, vx, vy++) = +av-iv-cv+kv;
+    ACCESS2D(V, vx, vy++) = +bv-jv+cv-kv;
+    ACCESS2D(V, vx, vy++) = -bv+jv+cv-kv;
+    ACCESS2D(V, vx, vy++) = +bv-jv-dv+lv;
+    vx++; vy = 0;
+    ACCESS2D(V, vx, vy++) = +ev+iv-gv-kv;
+    ACCESS2D(V, vx, vy++) = +fv+jv+gv+kv;
+    ACCESS2D(V, vx, vy++) = -fv-jv+gv+kv;
+    ACCESS2D(V, vx, vy++) = +fv+jv-hv-lv;
+    vx++; vy = 0;
+    ACCESS2D(V, vx, vy++) = -ev+iv+gv-kv;
+    ACCESS2D(V, vx, vy++) = -fv+jv-gv+kv;
+    ACCESS2D(V, vx, vy++) = +fv-jv-gv+kv;
+    ACCESS2D(V, vx, vy++) = -fv+jv+hv-lv;
+    vx++; vy = 0;
+    ACCESS2D(V, vx, vy++) = +ev-mv-gv+ov;
+    ACCESS2D(V, vx, vy++) = +fv-nv+gv-ov;
+    ACCESS2D(V, vx, vy++) = -fv+nv+gv-ov;
+    ACCESS2D(V, vx, vy++) = +fv-nv-hv+pv;
+
+    for(int i = 0; i < 4; i++)
+    {
+        for(int j = 0; j < 4; j++)
+            cout<<V[i][j]<<" ";
+    }
+    // cout<<endl;
+}
+
+void tile2(int bs, int p, int q, int ch, float *devin, int h, int w, int och)
+{
+    int tbs, tp, tq, tch, tbsf, x;
+    tbsf = 0;
+    tp = 0;
+    tq = 0;
+    x = 0;
+    tbs = tbsf%bs;
+
+    int och_pb = MAX_THREAD/ch;
+    int tf = tbsf / bs;
+    int toch = x/ch + tf*(och_pb);
+    tch = x%ch; 
+
+    float V[4][4];
+    float thrtile[4][4];
+    // copy the tiles to thrtile
+    int offset1 = (tbs*ch + tch)*h*w;
+    for(int th = 2*tp, i = 0; i < 4; th++, i++)
+        for(int tw = 2*tq, j = 0; j < 4; tw++, j++)
+            thrtile[i][j] = devin[offset1 + th*w + tw];
+
+    float B[4][4] = {
+        {1,0,0,0},
+        {0,1,-1,1},
+        {-1,1,1,0},
+        {0,0,0,-1}
+    };
+    float B_t[4][4] = {
+        {1,0,-1,0},
+        {0,1,1,0},
+        {0,-1,1,0},
+        {0,1,0,-1}
+    };
+    //Calculation of V
+    float temp[4][4];
+
+    for(int i = 0; i <4; ++i)
+    {
+        for(int j = 0; j <4; ++j)
+        {
+            temp[i][j] = 0;
+            for(int k = 0; k <4; ++k)
+            {
+                temp[i][j] += thrtile[i][k] * B[k][j];
+            }   
+        }
+    }
+    for(int i = 0; i <4; ++i)
+    {
+        for(int j = 0; j <4; ++j)
+        {
+            V[i][j] = 0;
+            for(int k = 0; k <4; ++k)
+            {
+                V[i][j] += B_t[i][k] * temp[k][j];
+            }
+        }
+    }
+
+    for(int i = 0; i < 4; i++)
+    {
+        for(int j = 0; j < 4; j++)
+            cout<<V[i][j]<<" ";
+    }
+    // cout<<endl;
+}
+
+
 int main()
 {
     float *devsum, *devy;
-    int och, p, q, bs;
-    och = p = q = bs = 1;
+    int och, p, q, bs, ch;
+    och = p = q = bs = ch = 1;
     devsum = new float[16];
     devy = new float[4];
     auto engine = default_random_engine(time(nullptr));
@@ -113,4 +254,11 @@ int main()
         cout<<devy[i]<<" ";
     }
     cout<<endl;
+
+    tile1(bs, p, q, ch, devsum, 4, 4, 1);
+    cout<<endl;
+
+    tile2(bs, p, q, ch, devsum, 4, 4, 1);
+    cout<<endl;
+    
 }
