@@ -299,7 +299,7 @@ __global__ void lastcal(int och, int p, int q, int bs, float *devsum, float *dev
     toch = threadIdx.x;
 
     int offset = (((tbs*och+toch)*p+tp)*q+tq)*16;
-    int ay, by, cy, dy, ey, fy, gy, hy, iy, jy, ky, ly, my, ny, oy, py;
+    float ay, by, cy, dy, ey, fy, gy, hy, iy, jy, ky, ly, my, ny, oy, py;
     int ind = 0;
     ay = ACCESS(devsum, offset, ind++);
     by = ACCESS(devsum, offset, ind++);
