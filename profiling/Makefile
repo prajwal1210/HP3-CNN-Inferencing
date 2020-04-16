@@ -26,6 +26,7 @@ clean:
 	rm test
 
 run_vgg:
+	rm -f logVGG.txt
 	./test "VGG" "$(PROJECT_DIR)/pretrained-models/vgg19.pb" "DIRECT"
 	./test "VGG" "$(PROJECT_DIR)/pretrained-models/vgg19.pb" "IM2COL"
 	./test "VGG" "$(PROJECT_DIR)/pretrained-models/vgg19.pb" "FFT"
@@ -33,6 +34,7 @@ run_vgg:
 	./test "VGG" "$(PROJECT_DIR)/pretrained-models/vgg19.pb"
 
 run_alex:
+	rm -f logVGG.txt
 	./test "ALEX" "$(PROJECT_DIR)/pretrained-models/alexnet.pb" "DIRECT"
 	./test "ALEX" "$(PROJECT_DIR)/pretrained-models/alexnet.pb" "IM2COL"
 	./test "ALEX" "$(PROJECT_DIR)/pretrained-models/alexnet.pb" "FFT"
