@@ -246,25 +246,25 @@ __global__ void tile2(int bs, int p, int q, int ch, float *devin, float *devsum,
     
     //Calculation of V
     int vx = 0, vy = 0;
-    ACCESS2D(V, vx, vy++) = +a-i-c+k;
-    ACCESS2D(V, vx, vy++) = +b-j+c-k;
-    ACCESS2D(V, vx, vy++) = -b+j+c-k;
-    ACCESS2D(V, vx, vy++) = +b-j-d+l;
+    ACCESS2D(V, vx, vy++) = +av-iv-cv+kv;
+    ACCESS2D(V, vx, vy++) = +bv-jv+cv-kv;
+    ACCESS2D(V, vx, vy++) = -bv+jv+cv-kv;
+    ACCESS2D(V, vx, vy++) = +bv-jv-dv+lv;
     vx++; vy = 0;
-    ACCESS2D(V, vx, vy++) = +e+i-g-k;
-    ACCESS2D(V, vx, vy++) = +f+j+g+k;
-    ACCESS2D(V, vx, vy++) = -f-j+g+k;
-    ACCESS2D(V, vx, vy++) = +f+j-h-l;
+    ACCESS2D(V, vx, vy++) = +ev+iv-gv-kv;
+    ACCESS2D(V, vx, vy++) = +fv+jv+gv+kv;
+    ACCESS2D(V, vx, vy++) = -fv-jv+gv+kv;
+    ACCESS2D(V, vx, vy++) = +fv+jv-hv-lv;
     vx++; vy = 0;
-    ACCESS2D(V, vx, vy++) = -e+i+g-k;
-    ACCESS2D(V, vx, vy++) = -f+j-g+k;
-    ACCESS2D(V, vx, vy++) = +f-j-g+k;
-    ACCESS2D(V, vx, vy++) = -f+j+h-l;
+    ACCESS2D(V, vx, vy++) = -ev+iv+gv-kv;
+    ACCESS2D(V, vx, vy++) = -fv+jv-gv+kv;
+    ACCESS2D(V, vx, vy++) = +fv-jv-gv+kv;
+    ACCESS2D(V, vx, vy++) = -fv+jv+hv-lv;
     vx++; vy = 0;
-    ACCESS2D(V, vx, vy++) = +e-m-g+o;
-    ACCESS2D(V, vx, vy++) = +f-n+g-o;
-    ACCESS2D(V, vx, vy++) = -f+n+g-o;
-    ACCESS2D(V, vx, vy++) = +f-n-h+p;
+    ACCESS2D(V, vx, vy++) = +ev-mv-gv+ov;
+    ACCESS2D(V, vx, vy++) = +fv-nv+gv-ov;
+    ACCESS2D(V, vx, vy++) = -fv+nv+gv-ov;
+    ACCESS2D(V, vx, vy++) = +fv-nv-hv+pv;
     
     __syncthreads();
 
