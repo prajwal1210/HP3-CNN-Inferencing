@@ -517,7 +517,7 @@ float* convolve_FFT(cufftComplex* input_layer_pad, cufftComplex* kernel, int pad
   float *crop_in = NULL; crop_in = conv_result; 
 
   dim3 threads5(8,8,8);
-  dim3 grid5(ceil(H/8.0f),ceil(W/8.0f),ceil(out_size/8));
+  dim3 grid5(ceil(H/8.0f),ceil(W/8.0f),ceil(out_size/8.0f));
 
   cudaEventRecord(start);
   crop_and_stride<<<grid5, threads5>>>(crop_in, crop_out, H, W, nos_oH, nos_oW, D, stride, out_size);
