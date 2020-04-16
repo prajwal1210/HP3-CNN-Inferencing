@@ -318,17 +318,13 @@ __global__ void lastcal(int och, int p, int q, int bs, float *devsum, float *dev
     o = ACCESS(devsum, offset, ind++);
     p = ACCESS(devsum, offset, ind++);
     
-    for(int i = 0; i <2; ++i)
-    {
-        for(int j = 0; j <2; ++j)
-        {
-            devY[((((tbs*och+toch)*p+tp)*q+tq)*2+i)*2+j] = 0;
-            for(int k = 0; k <4; ++k)
-            {
-                devY[((((tbs*och+toch)*p+tp)*q+tq)*2+i)*2+j] += temp[i][k] * A[k][j];
-            }
-        }
-    }
+    ind = 0;
+    offset = (((tbs*och+toch)*p+tp)*q+tq)*4;
+    
+    ACCESS(devY, offset, ind++) = a+e+i+b+f+j+c+g+k;
+    ACCESS(devY, offset, ind++) = b+f+j-c-g-k-d-h-l;
+    ACCESS(devY, offset, ind++) = e-i-m+f-j-n+g-k-o;
+    ACCESS(devY, offset, ind++) = f-j-n-g+k+o-h+l+p;
 }
 
 
