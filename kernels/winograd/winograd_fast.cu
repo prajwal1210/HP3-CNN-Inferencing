@@ -45,7 +45,7 @@ __global__ void precompute(int och, int ch, float* kernel_weights, float *U)
     iu = ACCESS(kernel_weights, offset, ind++);
     
     ind = 0;
-    offset = ((toch*ch + tch)*16;
+    offset = (toch*ch + tch)*16;
 
     float adg, beh, cfi, a_dg, b_eh, c_fi;
     adg = au+du+gu;
@@ -55,10 +55,10 @@ __global__ void precompute(int och, int ch, float* kernel_weights, float *U)
     b_eh = bu-eu+hu;
     c_fi = cu-fu+iu;
     
-    ACCESS(U, offset, ind++) = a;
-    ACCESS(U, offset, ind++) = 0.5*(a+b+c);
-    ACCESS(U, offset, ind++) = 0.5*(a-b+c);
-    ACCESS(U, offset, ind++) = c;
+    ACCESS(U, offset, ind++) = au;
+    ACCESS(U, offset, ind++) = 0.5*(au+bu+cu);
+    ACCESS(U, offset, ind++) = 0.5*(au-bu+cu);
+    ACCESS(U, offset, ind++) = cu;
     ACCESS(U, offset, ind++) = 0.5*(adg);
     ACCESS(U, offset, ind++) = 0.25*(adg+beh+cfi);
     ACCESS(U, offset, ind++) = 0.25*(adg-beh+cfi);
@@ -67,10 +67,10 @@ __global__ void precompute(int och, int ch, float* kernel_weights, float *U)
     ACCESS(U, offset, ind++) = 0.25*(a_dg+b_eh+c_fi);
     ACCESS(U, offset, ind++) = 0.25*(a_dg-b_eh+c_fi);
     ACCESS(U, offset, ind++) = 0.5*(c_fi);
-    ACCESS(U, offset, ind++) = g;
-    ACCESS(U, offset, ind++) = 0.5*(g+h+i);
-    ACCESS(U, offset, ind++) = 0.5*(g-h+i);
-    ACCESS(U, offset, ind++) = i;
+    ACCESS(U, offset, ind++) = gu;
+    ACCESS(U, offset, ind++) = 0.5*(gu+hu+iu);
+    ACCESS(U, offset, ind++) = 0.5*(gu-hu+iu);
+    ACCESS(U, offset, ind++) = iu;
     
 }
 
