@@ -17,7 +17,7 @@ FFT_KERNEL = $(shell find $(PROJECT_DIR) -name $(FFT_FILE))
 WINOGRAD_FILE = winograd_fast.cu
 WINOGRAD_KERNEL = $(shell find $(PROJECT_DIR) -name $(WINOGRAD_FILE))
 IM2COL_KERNEL = $(shell find $(PROJECT_DIR) -name im2col.cu)
-
+NUM_RUNS = 3
 
 test: profiler.cc $(OPERATIONS_LIBRARY) $(CNN_FORWARD_LIBRARY) $(DATA_UTIL_LIBRARY) $(TRANSLATOR_LIBRARY) $(PROTO_LIBRARY) $(FFT_KERNEL) $(DIRECT_CONV) $(WINOGRAD_KERNEL) $(IM2COL_KERNEL)
 	$(NVCC) -I $(PROJECT_DIR) -L $(CUBLAS) $(CXXFLAGS) $? $(OPENCV_LIB_FLAGS) $(PROTOBUF_LIB_FLAGS) $(CUDA_LIB_FLAGS) -o $@
@@ -27,15 +27,15 @@ clean:
 
 run_vgg:
 	rm -f logVGG.txt
-	./test "VGG" "$(PROJECT_DIR)/pretrained-models/vgg19.pb" "DIRECT"
-	./test "VGG" "$(PROJECT_DIR)/pretrained-models/vgg19.pb" "IM2COL"
-	./test "VGG" "$(PROJECT_DIR)/pretrained-models/vgg19.pb" "FFT"
-	./test "VGG" "$(PROJECT_DIR)/pretrained-models/vgg19.pb" "WINOGRAD"
-	./test "VGG" "$(PROJECT_DIR)/pretrained-models/vgg19.pb"
+	./test "VGG" "$(PROJECT_DIR)/pretrained-models/vgg19.pb" $(NUM_RUNS) "DIRECT"
+	./test "VGG" "$(PROJECT_DIR)/pretrained-models/vgg19.pb" $(NUM_RUNS) "IM2COL"
+	./test "VGG" "$(PROJECT_DIR)/pretrained-models/vgg19.pb" $(NUM_RUNS) "FFT"
+	./test "VGG" "$(PROJECT_DIR)/pretrained-models/vgg19.pb" $(NUM_RUNS) "WINOGRAD" 
+	./test "VGG" "$(PROJECT_DIR)/pretrained-models/vgg19.pb" $(NUM_RUNS)
 
 run_alex:
 	rm -f logALEX.txt
-	./test "ALEX" "$(PROJECT_DIR)/pretrained-models/alexnet.pb" "DIRECT"
-	./test "ALEX" "$(PROJECT_DIR)/pretrained-models/alexnet.pb" "IM2COL"
-	./test "ALEX" "$(PROJECT_DIR)/pretrained-models/alexnet.pb" "FFT"
-	./test "ALEX" "$(PROJECT_DIR)/pretrained-models/alexnet.pb"
+	./test "ALEX" "$(PROJECT_DIR)/pretrained-models/alexnet.pb" $(NUM_RUNS) "DIRECT"
+	./test "ALEX" "$(PROJECT_DIR)/pretrained-models/alexnet.pb" $(NUM_RUNS) "IM2COL"
+	./test "ALEX" "$(PROJECT_DIR)/pretrained-models/alexnet.pb" $(NUM_RUNS) "FFT"
+	./test "ALEX" "$(PROJECT_DIR)/pretrained-models/alexnet.pb" $(NUM_RUNS)

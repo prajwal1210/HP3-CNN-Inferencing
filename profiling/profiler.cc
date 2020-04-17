@@ -83,8 +83,8 @@ void analyzeForAlgorithm(DeepNet::Network net, customAlgorithmType t, string dat
 
 int main(int argc, char **argv) {
   
-  if(argc < 3) {
-    std::cerr << "Please provide path to the option - \"VGG\" or \"ALEX\" and respective path to the model" << std::endl;
+  if(argc < 4) {
+    std::cerr << "Please provide path to the option - \"VGG\" or \"ALEX\" and respective path to the model and the number of runs" << std::endl;
     exit(1);  
   }
 
@@ -98,8 +98,8 @@ int main(int argc, char **argv) {
   // }
 
   customAlgorithmType t = t_CUDNN;
-  if(argc == 4) {
-    std::string algo(argv[3]);
+  if(argc >= 5) {
+    std::string algo(argv[4]);
     if(algo == "DIRECT") {
       t = t_CUSTOM_DIRECT;
     }
@@ -114,6 +114,9 @@ int main(int argc, char **argv) {
     }
 
   }
+  
+  int n_runs = atoi(argv[3]);
+  std::cout << "Number of Runs - " << n_runs << std::endl;
 
   DeepNet::Network net;
   CNN::loadCNNModelFromFile(argv[2], net);
@@ -129,9 +132,9 @@ int main(int argc, char **argv) {
 
   std::string dataset_path =  "../forward/data/MiniImageNet/";
 
-  // for(customAlgorithmType t : algos) {
-  analyzeForAlgorithm(net, t, dataset_path, my_log_file); 
-  // }
+  while(n_runs--) {
+    analyzeForAlgorithm(net, t, dataset_path, my_log_file); 
+  }
   my_log_file.close();
 
   google::protobuf::ShutdownProtobufLibrary();
