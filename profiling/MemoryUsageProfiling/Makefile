@@ -1,5 +1,5 @@
 
-PROJECT_DIR = $(shell dirname $(PWD))
+PROJECT_DIR = $(shell dirname $(shell dirname $(PWD)))
 NVCC = nvcc
 CXXFLAGS = -std=c++14
 CUBLAS = /usr/local/cuda-10.1/man/man7/libcublas.so.7 #Have to make sure the libcublas.so.7 file is here, otherwise provide the proper path
@@ -17,25 +17,19 @@ FFT_KERNEL = $(shell find $(PROJECT_DIR) -name $(FFT_FILE))
 WINOGRAD_FILE = winograd_fast.cu
 WINOGRAD_KERNEL = $(shell find $(PROJECT_DIR) -name $(WINOGRAD_FILE))
 IM2COL_KERNEL = $(shell find $(PROJECT_DIR) -name im2col.cu)
-NUM_RUNS = 3
+TARGET = mem_prof
+PROFILER_SCRIPT = memProfiler.sh
 
-test: profiler.cc $(OPERATIONS_LIBRARY) $(CNN_FORWARD_LIBRARY) $(DATA_UTIL_LIBRARY) $(TRANSLATOR_LIBRARY) $(PROTO_LIBRARY) $(FFT_KERNEL) $(DIRECT_CONV) $(WINOGRAD_KERNEL) $(IM2COL_KERNEL)
+.PHONY: $(TARGET)
+
+$(TARGET): gpuMemProfiler.cc $(OPERATIONS_LIBRARY) $(CNN_FORWARD_LIBRARY) $(DATA_UTIL_LIBRARY) $(TRANSLATOR_LIBRARY) $(PROTO_LIBRARY) $(FFT_KERNEL) $(DIRECT_CONV) $(WINOGRAD_KERNEL) $(IM2COL_KERNEL)
 	$(NVCC) -I $(PROJECT_DIR) -L $(CUBLAS) $(CXXFLAGS) $? $(OPENCV_LIB_FLAGS) $(PROTOBUF_LIB_FLAGS) $(CUDA_LIB_FLAGS) -o $@
 
+run:
+	chmod +x $(PROFILER_SCRIPT)
+	./$(PROFILER_SCRIPT) "$(TARGET)"
+
+
 clean:
-	rm test
-
-run_vgg:
-	rm -f logVGG.txt
-	./test "VGG" "$(PROJECT_DIR)/pretrained-models/vgg19.pb" $(NUM_RUNS) "DIRECT" 1>/dev/null
-	./test "VGG" "$(PROJECT_DIR)/pretrained-models/vgg19.pb" $(NUM_RUNS) "IM2COL" 1>/dev/null
-	./test "VGG" "$(PROJECT_DIR)/pretrained-models/vgg19.pb" $(NUM_RUNS) "FFT" 1>/dev/null
-	./test "VGG" "$(PROJECT_DIR)/pretrained-models/vgg19.pb" $(NUM_RUNS) "WINOGRAD" 1>/dev/null
-	./test "VGG" "$(PROJECT_DIR)/pretrained-models/vgg19.pb" $(NUM_RUNS) 1>/dev/null
-
-run_alex:
-	rm -f logALEX.txt
-	./test "ALEX" "$(PROJECT_DIR)/pretrained-models/alexnet.pb" $(NUM_RUNS) "DIRECT" 1>/dev/null
-	./test "ALEX" "$(PROJECT_DIR)/pretrained-models/alexnet.pb" $(NUM_RUNS) "IM2COL" 1>/dev/null
-	./test "ALEX" "$(PROJECT_DIR)/pretrained-models/alexnet.pb" $(NUM_RUNS) "FFT" 1>/dev/null
-	./test "ALEX" "$(PROJECT_DIR)/pretrained-models/alexnet.pb" $(NUM_RUNS) 1>/dev/null
+	rm $(TARGET)
+	rm -f *.txt

@@ -130,7 +130,7 @@ int main(int argc, char **argv) {
     exit(1);
   }
 
-  std::string dataset_path =  "../forward/data/MiniImageNet/";
+  std::string dataset_path =  "../../forward/data/MiniImageNet/";
 
   while(n_runs--) {
     analyzeForAlgorithm(net, t, dataset_path, my_log_file); 
