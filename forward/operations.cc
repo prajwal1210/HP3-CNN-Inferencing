@@ -192,7 +192,7 @@ float* Conv2D::Conv_CUDNN(float* input, profilingElapsedTime &time_elapsed) {
                               d_output));
   }
   
-  float* h_output = new float[image_out_bytes];
+  float* h_output = (float *)malloc(image_out_bytes);
   cudaMemcpy(h_output, d_output, image_out_bytes, cudaMemcpyDeviceToHost);
 
   /* Free the temporary memory */
@@ -609,7 +609,7 @@ float* Pool::PoolForward(float* input) {
                                 this->output_descriptor,
                                 d_output));
 
-  float* h_output = new float[image_out_bytes];
+  float* h_output = (float*)malloc(image_out_bytes);
   cudaMemcpy(h_output, d_output, image_out_bytes, cudaMemcpyDeviceToHost);
 
   /* Free the temporary memory */
@@ -739,7 +739,7 @@ float* Activation::ActivationForward(float* input) {
                                     d_output));
 
 
-  float* h_output = new float[image_bytes];
+  float* h_output = (float*)malloc(image_bytes);
   cudaMemcpy(h_output, d_output, image_bytes, cudaMemcpyDeviceToHost);
 
   /* Free the temporary memory */
@@ -896,7 +896,7 @@ float* Linear::LinearForward(float* input) {
                               d_output));
   }
 
-  float* h_output = new float[output_bytes];
+  float* h_output = (float*)malloc(output_bytes);
   cudaMemcpy(h_output, d_output, output_bytes, cudaMemcpyDeviceToHost);
 
   /* Free the temporary memory */

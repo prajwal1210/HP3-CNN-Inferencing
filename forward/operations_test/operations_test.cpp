@@ -204,7 +204,7 @@ int main(int argc, char** argv) {
   cudnnHandle_t cudnn;
   checkCUDNN(cudnnCreate(&cudnn));
 
-  customAlgorithmType t = t_CUSTOM_IM2COL;
+  customAlgorithmType t = t_CUDNN;
   if(argc == 2) {
     std::string algo(argv[1]);
     if (algo == "DIRECT") {

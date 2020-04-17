@@ -27,7 +27,7 @@ cv::Mat ImageLoader::loadImage(const char* image_path, bool resize) {
 /* Implementation of (ImageLoader)HWCToCHW */
 float* ImageLoader::HWCToCHW(float* image, int rows, int cols, int channels) {
 
-	float* data = new float[channels*rows*cols];
+	float* data = (float*)malloc(channels*rows*cols*sizeof(float));
 	for(size_t i=0; i<rows; i++) {
     for(size_t j=0; j<cols; j++) {
       for(size_t c=0; c<channels; c++) {
@@ -41,7 +41,7 @@ float* ImageLoader::HWCToCHW(float* image, int rows, int cols, int channels) {
 /* Implementation of (ImageLoader)CHWToHWC */
 float* ImageLoader::CHWToHWC(float* image, int rows, int cols, int channels) {
 
-	float* data = new float[channels*rows*cols];
+	float* data = (float*)malloc(channels*rows*cols*sizeof(float));
 	for(size_t i=0; i<rows; i++) {
     for(size_t j=0; j<cols; j++) {
       for(size_t c=0; c<channels; c++) {
@@ -107,7 +107,7 @@ MiniImageNetLoader::~MiniImageNetLoader() {
 float* MiniImageNetLoader::loadNextBatch(int& batchsize, int& channels, int& height, int& width, bool& completed) {
   std::string fileName;
   int batch_cnt = 0;
-  float* data = new float[this->BATCH_SIZE * 3 * 256 * 256];
+  float* data = (float*)malloc(this->BATCH_SIZE * 3 * 256 * 256 * sizeof(float));
   int data_ptr = 0;
   while(std::getline(this->imageListFile, fileName)) {
     batch_cnt++;
