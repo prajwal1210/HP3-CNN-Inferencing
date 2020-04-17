@@ -27,15 +27,15 @@ clean:
 
 run_vgg:
 	rm -f logVGG.txt
-	./test "VGG" "$(PROJECT_DIR)/pretrained-models/vgg19.pb" $(NUM_RUNS) "DIRECT"
-	./test "VGG" "$(PROJECT_DIR)/pretrained-models/vgg19.pb" $(NUM_RUNS) "IM2COL"
-	./test "VGG" "$(PROJECT_DIR)/pretrained-models/vgg19.pb" $(NUM_RUNS) "FFT"
-	./test "VGG" "$(PROJECT_DIR)/pretrained-models/vgg19.pb" $(NUM_RUNS) "WINOGRAD" 
-	./test "VGG" "$(PROJECT_DIR)/pretrained-models/vgg19.pb" $(NUM_RUNS)
+	./test "VGG" "$(PROJECT_DIR)/pretrained-models/vgg19.pb" $(NUM_RUNS) "DIRECT" 1>/dev/null
+	./test "VGG" "$(PROJECT_DIR)/pretrained-models/vgg19.pb" $(NUM_RUNS) "IM2COL" 1>/dev/null
+	./test "VGG" "$(PROJECT_DIR)/pretrained-models/vgg19.pb" $(NUM_RUNS) "FFT" 1>/dev/null
+	./test "VGG" "$(PROJECT_DIR)/pretrained-models/vgg19.pb" $(NUM_RUNS) "WINOGRAD" 1>/dev/null
+	./test "VGG" "$(PROJECT_DIR)/pretrained-models/vgg19.pb" $(NUM_RUNS) 1>/dev/null
 
 run_alex:
 	rm -f logALEX.txt
-	./test "ALEX" "$(PROJECT_DIR)/pretrained-models/alexnet.pb" $(NUM_RUNS) "DIRECT"
-	./test "ALEX" "$(PROJECT_DIR)/pretrained-models/alexnet.pb" $(NUM_RUNS) "IM2COL"
-	./test "ALEX" "$(PROJECT_DIR)/pretrained-models/alexnet.pb" $(NUM_RUNS) "FFT"
-	./test "ALEX" "$(PROJECT_DIR)/pretrained-models/alexnet.pb" $(NUM_RUNS)
+	./test "ALEX" "$(PROJECT_DIR)/pretrained-models/alexnet.pb" $(NUM_RUNS) "DIRECT" 1>/dev/null
+	./test "ALEX" "$(PROJECT_DIR)/pretrained-models/alexnet.pb" $(NUM_RUNS) "IM2COL" 1>/dev/null
+	./test "ALEX" "$(PROJECT_DIR)/pretrained-models/alexnet.pb" $(NUM_RUNS) "FFT" 1>/dev/null
+	./test "ALEX" "$(PROJECT_DIR)/pretrained-models/alexnet.pb" $(NUM_RUNS) 1>/dev/null
