@@ -46,12 +46,10 @@ CUDNN’s `CUDNN_CONVOLUTION_FWD_ALGO_FFT` has the following shortcomings which 
 * Filter’s width must be greater than zero-padding width
 * _Filter’s width can be less than padding width_
 
-## Additional points
-* FFT can be really fast and useful when the filter sizes are large.
-* FFT with small kernel size are slow due to insufficient parallelism to cover the memory latency.
+## Shortcomings
+* In the current implementation, there is loop on the `batch_size`, alleviating this again requires more memory, making the implementation slower
+* In the CUDNN implementation, the input and filter are padded to powers of 2,3,5,7 and the performance and precision are best. Our implementation doesn't do this as this requires more memory (greater than google colab's limit). This makes our implementation slower.
 * The current implementation is for square images. This can be easily scaled up to images with unequal height and width.
-* The computation complexity of FFT-based algorithms depends on the padded image size, and in its turn padded image size depends both on the input and convolution kernel sizes.
-* It is an observation that if the FFT dimensions are small multiples of powers of N, where N varies from 2 to 8 for CUFFT, the performance and precision are best. This can be obtained by appropriately padding the image and the filter.
 
 ## References
 * http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.472.2396&rep=rep1&type=pdf
