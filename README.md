@@ -68,4 +68,4 @@ Located under forward/batch_test:
 * Clean the test directory - `make clean`
 * Requirements - 
 
-##### Notebook run the tests on Google Colab - https://colab.research.google.com/drive/1GD7mgy3pVIKSnobhY7hSdD_3P9i5532R
+##### Notebook to run the tests on Google Colab - https://colab.research.google.com/drive/1GD7mgy3pVIKSnobhY7hSdD_3P9i5532R
