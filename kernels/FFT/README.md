@@ -34,22 +34,16 @@
 * **Crop and stride:** The output obtained in the previous step is cropped to `Input_size - filter_size + 1`  According to the input stride, the required elements are transferred to the output.
 
 ## Comparison with cuDNN’s FFT  
-CUDNN’s `CUDNN_CONVOLUTION_FWD_ALGO_FFT` has the following shortcomings which are alleviated in our FFT based implementation :
-* Input’s feature map `height + 2 * zero-padding` height must equal 256 or less
-* _Our implementation doesn’t have any restriction on the input height_
-* Input’s feature map `width + 2 * zero-padding` width must equal 256 or less
-* _Our implementation doesn’t have any restriction on the input width_
-* The vertical and horizontal filter stride must equal 1
-* _There is no restriction on the stride_ 
-* Filter’s height must be greater than zero-padding height 
-* _Filter’s height can be less than padding height_ 
-* Filter’s width must be greater than zero-padding width
-* _Filter’s width can be less than padding width_
-
-## Shortcomings
+#### Shortcomings
 * In the current implementation, there is loop on the `batch_size`, alleviating this again requires more memory. This makes the implementation slower
 * In the CUDNN implementation, the input and filter are padded to powers of 2,3,5,7 and the performance and precision are best. Our implementation doesn't do this as this requires more memory (greater than google colab's limit). This makes our implementation slower.
 * The current implementation is for square images. This can be easily scaled up to images with unequal height and width.
+
+#### Improvements
+* Input’s feature map need not have `height + 2 * zero-padding` <= 256
+* Input’s feature map need not have `width + 2 * zero-padding`  <= 256
+* The vertical and horizontal filter stride need not be equal to 1
+* Filter’s height, width need not be greater than zero-padding height, width
 
 ## References
 * http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.472.2396&rep=rep1&type=pdf
