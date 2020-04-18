@@ -30,7 +30,7 @@
 * **High speed version:** The operation is looped over batch size and the precomputed FFT of input is replicated number of filters times and pointwise product is carried out.  This has a memory read overhead.
 * **Low memory version:** The FFTs are calculated when required. It is looped over output channels. This leads to FFTs being calculated for the same input multiple times and hence is slow. This uses less memory though.
 
-####Output Post-Processing:
+#### Output Post-Processing:
 * **Crop and stride:** The output obtained in the previous step is cropped to Input_size - filter_size + 1  According to the input stride, the required elements are transferred to the output.
 
 ## Comparison with cuDNN’s FFT  
