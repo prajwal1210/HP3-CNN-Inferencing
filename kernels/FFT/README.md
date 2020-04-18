@@ -47,7 +47,7 @@ CUDNN’s `CUDNN_CONVOLUTION_FWD_ALGO_FFT` has the following shortcomings which 
 * _Filter’s width can be less than padding width_
 
 ## Shortcomings
-* In the current implementation, there is loop on the `batch_size`, alleviating this again requires more memory, making the implementation slower
+* In the current implementation, there is loop on the `batch_size`, alleviating this again requires more memory. This makes the implementation slower
 * In the CUDNN implementation, the input and filter are padded to powers of 2,3,5,7 and the performance and precision are best. Our implementation doesn't do this as this requires more memory (greater than google colab's limit). This makes our implementation slower.
 * The current implementation is for square images. This can be easily scaled up to images with unequal height and width.
 
