@@ -1,5 +1,5 @@
 
-PROJECT_DIR = $(shell dirname $(PWD))
+PROJECT_DIR = $(shell dirname $(shell dirname $(PWD)))
 NVCC = nvcc
 CXXFLAGS = -std=c++14
 CUBLAS = /usr/local/cuda-10.1/man/man7/libcublas.so.7 #Have to make sure the libcublas.so.7 file is here, otherwise provide the proper path
@@ -17,25 +17,19 @@ FFT_KERNEL = $(shell find $(PROJECT_DIR) -name $(FFT_FILE))
 WINOGRAD_FILE = winograd_fast.cu
 WINOGRAD_KERNEL = $(shell find $(PROJECT_DIR) -name $(WINOGRAD_FILE))
 IM2COL_KERNEL = $(shell find $(PROJECT_DIR) -name im2col.cu)
+TARGET = mem_prof
+PROFILER_SCRIPT = memProfiler.sh
 
+.PHONY: all clean
 
-test: profiler.cc $(OPERATIONS_LIBRARY) $(CNN_FORWARD_LIBRARY) $(DATA_UTIL_LIBRARY) $(TRANSLATOR_LIBRARY) $(PROTO_LIBRARY) $(FFT_KERNEL) $(DIRECT_CONV) $(WINOGRAD_KERNEL) $(IM2COL_KERNEL)
+all: $(TARGET)
+
+$(TARGET): gpuMemProfiler.cc $(OPERATIONS_LIBRARY) $(CNN_FORWARD_LIBRARY) $(DATA_UTIL_LIBRARY) $(TRANSLATOR_LIBRARY) $(PROTO_LIBRARY) $(FFT_KERNEL) $(DIRECT_CONV) $(WINOGRAD_KERNEL) $(IM2COL_KERNEL)
 	$(NVCC) -I $(PROJECT_DIR) -L $(CUBLAS) $(CXXFLAGS) $? $(OPENCV_LIB_FLAGS) $(PROTOBUF_LIB_FLAGS) $(CUDA_LIB_FLAGS) -o $@
 
+run:
+	chmod +x $(PROFILER_SCRIPT)
+	./$(PROFILER_SCRIPT) "$(TARGET)"
+
 clean:
-	rm test
-
-run_vgg:
-	rm -f logVGG.txt
-	./test "VGG" "$(PROJECT_DIR)/pretrained-models/vgg19.pb" "DIRECT"
-	./test "VGG" "$(PROJECT_DIR)/pretrained-models/vgg19.pb" "IM2COL"
-	./test "VGG" "$(PROJECT_DIR)/pretrained-models/vgg19.pb" "FFT"
-	./test "VGG" "$(PROJECT_DIR)/pretrained-models/vgg19.pb" "WINOGRAD"
-	./test "VGG" "$(PROJECT_DIR)/pretrained-models/vgg19.pb"
-
-run_alex:
-	rm -f logALEX.txt
-	./test "ALEX" "$(PROJECT_DIR)/pretrained-models/alexnet.pb" "DIRECT"
-	./test "ALEX" "$(PROJECT_DIR)/pretrained-models/alexnet.pb" "IM2COL"
-	./test "ALEX" "$(PROJECT_DIR)/pretrained-models/alexnet.pb" "FFT"
-	./test "ALEX" "$(PROJECT_DIR)/pretrained-models/alexnet.pb"
+	rm -f $(TARGET)

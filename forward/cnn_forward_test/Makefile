@@ -18,12 +18,16 @@ WINOGRAD_FILE = winograd_fast.cu
 WINOGRAD_KERNEL = $(shell find $(PROJECT_DIR) -name $(WINOGRAD_FILE))
 IM2COL_KERNEL = $(shell find $(PROJECT_DIR) -name im2col.cu)
 
+.PHONY : all clean
+
+all : test
+
 test: cnn_forward_test.cc $(OPERATIONS_LIBRARY) $(CNN_FORWARD_LIBRARY) $(DATA_UTIL_LIBRARY) $(TRANSLATOR_LIBRARY) $(PROTO_LIBRARY) $(FFT_KERNEL) $(DIRECT_CONV) $(WINOGRAD_KERNEL) $(IM2COL_KERNEL)
 	$(NVCC) -I $(PROJECT_DIR) -L $(CUBLAS) $(CXXFLAGS) $^ $(OPENCV_LIB_FLAGS) $(PROTOBUF_LIB_FLAGS) $(CUDA_LIB_FLAGS) -o $@
 
 clean:
-	rm test
-	rm *.txt
+	rm -f test
+	rm -f *.txt
 
 run_cudnn:
 	./test "$(PROJECT_DIR)/pretrained-models/vgg19.pb" 1>/dev/null
