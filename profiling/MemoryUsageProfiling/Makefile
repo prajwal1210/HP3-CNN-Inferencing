@@ -20,7 +20,9 @@ IM2COL_KERNEL = $(shell find $(PROJECT_DIR) -name im2col.cu)
 TARGET = mem_prof
 PROFILER_SCRIPT = memProfiler.sh
 
-.PHONY: $(TARGET)
+.PHONY: all clean
+
+all: $(TARGET)
 
 $(TARGET): gpuMemProfiler.cc $(OPERATIONS_LIBRARY) $(CNN_FORWARD_LIBRARY) $(DATA_UTIL_LIBRARY) $(TRANSLATOR_LIBRARY) $(PROTO_LIBRARY) $(FFT_KERNEL) $(DIRECT_CONV) $(WINOGRAD_KERNEL) $(IM2COL_KERNEL)
 	$(NVCC) -I $(PROJECT_DIR) -L $(CUBLAS) $(CXXFLAGS) $? $(OPENCV_LIB_FLAGS) $(PROTOBUF_LIB_FLAGS) $(CUDA_LIB_FLAGS) -o $@
@@ -29,7 +31,5 @@ run:
 	chmod +x $(PROFILER_SCRIPT)
 	./$(PROFILER_SCRIPT) "$(TARGET)"
 
-
 clean:
-	rm $(TARGET)
-	rm -f *.txt
+	rm -f $(TARGET)
