@@ -492,7 +492,7 @@ float* convolve_FFT(float* input_layer_pad, float * kernel, int pad, int stride,
     cudaEventSynchronize(stop);
     milliseconds = 0;
     cudaEventElapsedTime(&milliseconds, start, stop);
-    conv_time += milliseconds;
+    overhead_time += milliseconds;
   }
   cudaFree(crop_in); cudaFree(crop_out);
   free(conv_result);
