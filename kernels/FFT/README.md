@@ -10,7 +10,7 @@
 * Each filter is of the form output_channels * H * W 
 * **Flip around the center:** Each element of the filter is flipped around the center. Not doing this operation on the kernel results in Correlation (not convolution).
 				
-                                              F(i,j,k) = (D-i, H-j, W-k)
+                                   F(i,j,k) = (D-i, H-j, W-k)
 
 * **Pad the filter:** The filter is padded to the size of the input. This is essential in order to get the correct output by pointwise product in the frequency domain  
 * **Align the filter:** The filter is required to have it’s Central element of the kernel in the (0,0) position. This is essential in order to get the correct output by pointwise product in the frequency domain
@@ -24,8 +24,8 @@
 #### Convolution Operation:
 * Preprocessed input and preprocessed filter in frequency domain are multiplied pointwise
 * **Convert back the obtain product using Inverse FFT:** The final convolution result is obtained by CUFFT library’s functions 
-  * cufftPlanMany that creates a plan supporting batched input
-  * cufftExecC2R is used for complex-to-real forward transform for single precision
+  * **cufftPlanMany** that creates a plan supporting batched input
+  * **cufftExecC2R** is used for complex-to-real forward transform for single precision
 * This operation “performs” cyclic convolution: The convolution kernel wraps around the input borders in all the dimensions. But, we require the output to be clamped in the borders and hence require post-processing on the output.
 * **High speed version:** The operation is looped over batch size and the precomputed FFT of input is replicated number of filters times and pointwise product is carried out.  This has a memory read overhead.
 * **Low memory version:** The FFTs are calculated when required. It is looped over output channels. This leads to FFTs being calculated for the same input multiple times and hence is slow. This uses less memory though.
