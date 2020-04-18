@@ -32,4 +32,3 @@ nvidia-smi --query-gpu=memory.used --format=csv -lms 10 > memory_cudnn.txt &
 ./$BINARY "../../pretrained-models/vgg19.pb" 1>/dev/null
 sleep 1
 pkill -9 nvidia-smi
-set +x
