@@ -113,7 +113,8 @@ def plotLayerWiseDataForTimeType(data, layer_cols, layer_specification_dict, bat
     handles, labels = ax.get_legend_handles_labels()
     ax.legend(handles=handles[1:], labels=labels[1:],bbox_to_anchor=(0.5, 1.1), loc='upper center' , borderaxespad=0., ncol = len(layer_cols)-1)
     
-    for i,row in df_to_plot.iterrows():
+    mean_d = df_to_plot.groupby(['X_LABELS','ALGO']).mean().reset_index()
+    for i,row in mean_d.iterrows():
         x = row['X_LABELS']
         y = row['Time']
         ax.text(x,y,f'{y:.2f}\n',ha = 'center', va = 'center', clip_on=True, fontsize = 18)
@@ -160,7 +161,8 @@ def batchWisePlot(data, layer_cols, layer_specification_dict, architecture, plot
     handles, labels = ax.get_legend_handles_labels()
     ax.legend(handles=handles[1:], labels=labels[1:],bbox_to_anchor=(0.5, 1.1), loc='upper center' , borderaxespad=0., ncol = len(layer_cols)-1)
 
-    for i,row in data_batchwise.iterrows():
+    mean_d = data_batchwise.groupby(['BATCHSIZE','ALGO']).mean()['SUM'].reset_index()
+    for i,row in mean_d.iterrows():
         x = row['BATCHSIZE']
         y = row['SUM']
         ax.text(x,y,f'{y:.2f}\n',ha = 'center', va = 'center', clip_on=True, fontsize = 14)
