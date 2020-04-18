@@ -1,13 +1,13 @@
 ## FFT based convolution
 #### Input pre-processing:
-* Input is of the form Batch_size * input_channels * H * W
+* Input is of the form `Batch_size * input_channels * H * W`
 * **Pad the input:** Each Input layer is padded by the required number parallely using cuda kernel pad_input
 * **Convert the input to frequency domain by FFT:** FFT of the input is obtained using CUFFT library’s functions 
   * **cufftPlanMany** that creates a plan supporting batched input
   * **cufftExecR2C** is used for real-to-complex forward transform for single precision.
 
 #### Filter pre-processing:
-* Each filter is of the form output_channels * H * W 
+* Each filter is of the form `output_channels * H * W` 
 * **Flip around the center:** Each element of the filter is flipped around the center. Not doing this operation on the kernel results in Correlation (not convolution).
 				
                                    F(i,j,k) = (D-i, H-j, W-k)
@@ -31,13 +31,13 @@
 * **Low memory version:** The FFTs are calculated when required. It is looped over output channels. This leads to FFTs being calculated for the same input multiple times and hence is slow. This uses less memory though.
 
 #### Output Post-Processing:
-* **Crop and stride:** The output obtained in the previous step is cropped to Input_size - filter_size + 1  According to the input stride, the required elements are transferred to the output.
+* **Crop and stride:** The output obtained in the previous step is cropped to `Input_size - filter_size + 1`  According to the input stride, the required elements are transferred to the output.
 
 ## Comparison with cuDNN’s FFT  
-CUDNN’s CUDNN_CONVOLUTION_FWD_ALGO_FFT has the following shortcomings which are alleviated in our FFT based implementation :
-* Input’s feature map height + 2 * zero-padding height must equal 256 or less
+CUDNN’s `CUDNN_CONVOLUTION_FWD_ALGO_FFT` has the following shortcomings which are alleviated in our FFT based implementation :
+* Input’s feature map `height + 2 * zero-padding` height must equal 256 or less
 * _Our implementation doesn’t have any restriction on the input height_
-* Input’s feature map width + 2 * zero-padding width must equal 256 or less
+* Input’s feature map `width + 2 * zero-padding` width must equal 256 or less
 * _Our implementation doesn’t have any restriction on the input width_
 * The vertical and horizontal filter stride must equal 1
 * _There is no restriction on the stride_ 
