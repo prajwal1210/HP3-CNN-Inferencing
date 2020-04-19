@@ -1,10 +1,14 @@
+import os 
+import matplotlib
+if os.environ.get('DISPLAY','') == '':
+    print('No Display found. Using non-interactive Agg backend')
+    matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import csv
 import argparse
-import os
 import shutil
-import matplotlib.pyplot as plt
 import seaborn as sns   
 sns.set(context = "poster", font_scale = 0.95, rc={"lines.linewidth": 1.5, 'lines.markersize': 10, 'legend.frameon': True})
 
@@ -186,6 +190,10 @@ def BatchWiseAnalysis(data, header, layer_specification_dict, architecture):
 
 
 if __name__ == "__main__":
+
+    if not os.path.isdir(PLOT_DIR):
+        os.mkdir(PLOT_DIR)
+
     if not os.path.exists(VGG_NET_LOG):
         print ('logVGG.txt does not exist...Skipping analysis for VGG')
     else:

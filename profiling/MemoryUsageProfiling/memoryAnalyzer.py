@@ -1,10 +1,14 @@
+import os 
+import matplotlib
+if os.environ.get('DISPLAY','') == '':
+    print('no display found. Using non-interactive Agg backend')
+    matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import csv
 import argparse
-import os
 import shutil
-import matplotlib.pyplot as plt
 import seaborn as sns   
 sns.set(context = "poster", font_scale = 0.95, rc={"lines.linewidth": 1.5, 'lines.markersize': 10, 'legend.frameon': True})
 
@@ -43,6 +47,9 @@ def plotGPUData(mem_file, colors, plot_dir):
 
 if __name__ == "__main__":
     
+    if not os.path.isdir(PLOT_DIR):
+        os.mkdir(PLOT_DIR)
+
     #Direct Convolution File
     if not os.path.exists("./memory_direct.txt"):
         print ("Direct Convolution log not found..Skipping")
