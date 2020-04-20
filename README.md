@@ -56,6 +56,16 @@ To run the entire code, there are a few requirements :
 * PyTorch 
 * OpenCV (C++ and Python)
 
+**[IMPORTANT]** Apart from the library requirements, we would like to mention that there are two versions of the following kernels each having different memory requirements and respective performances :
+* FFT Kernel -
+	* ```fft_fast.cu``` : This is the faster fft variant which is the default setting in all the makefiles. This requires a considerably large GPU memory and only works on GPUs with **memory > 12 GB** like on Colab
+	*  ```fft_lowmem.cu``` : This is the much  slower fft variant requiring far less memory than the fast version and can run on GPUs with **memory >= 2 GB**
+* Winograd Kernel -
+	* ```winograd_fast.cu``` : This is the faster winograd variant which is the default setting in all the makefiles. This requires a considerably large GPU memory and only works on GPUs with **memory > 12 GB** like on Colab
+	*  ```winograd_lowmem.cu``` : This is the much  slower winograd variant requiring far less memory than the fast version and can run on GPUs with **memory >= 3-4 GB**
+
+We explain how to over-ride the default Makefile settings and switch to the lowmem versions in the Compile Instructions.
+
 # Getting Started : Pre-Build Steps
 After cloning the directory, there are certain steps that need to be carried out so that the code can be compiled and executed
 
@@ -87,117 +97,124 @@ $ unzip MiniImageNet.zip
 
 # Compile Instructions
 
-### Test-1 Operations Test
+> **[IMPORTANT] Changing to Low memory kernels for Winograd and FFT  while compiling** 
+> Please read the Requirements section to know what low memory variants of these kernels are. By default, the Makefiles compile the faster higher memory variants of these kerenls. In order to switch to the lowmem options, use the tags: ```FFT_FILE=fft_lowmem.cu```,  ```WINOGRAD_FILE=winograd_lowmem.cu``` or both, with any of the make procedures mentioned hereafter as:
+> ```
+> $ make <TARGET> FFT_FILE=fft_lowmem.cu WINOGRAD_FILE=winograd_lowmem.cu
+>  ``` 
 
-Located under forward/opearations_test:
-
-* Tests the individual component operations in the operations.h library and compares the results with Pytorch Output
-
-* Compile - `make test`
-
-* Run the test for direct convolution - `make run_direct`
-
-* Run the test for FFT-based convolution - `make run_fft`
-
-* Run the test for Winograd-based convolution - `make run_winograd`
-
-* Run the test for im2col-based convolution - `make run_im2col`
-
-* Clean the test directory - `make clean`
-
-* Requirements - OpenCV, Pytorch10.1
-  
-
-### Setup Protobuf
-
-```shell
-
-$ apt-get install autoconf automake libtool curl make g++ unzip
-
-$ git clone https://github.com/protocolbuffers/protobuf.git
-
-$ cd protobuf
-
-$ git submodule update --init --recursive
-
-$ ./autogen.sh
-
-$ ./configure
-
-$ make -j8
-
-$ make check
-
-$ sudo make install
-
-$ sudo ldconfig
-
-$ cd ..
-
+**Global Make:** All the binaries mentioned mentioned below can be compiled using the global Makefile by the following commands:
 ```
+## In the main directory ##
+$ make tests 		#For the tests
+$ make profilers 	#For the profiler binaries
 
-  
-
-#### Test-2 CNN Forward Test
-
-Located under forward/cnn_forward_test:
-
-* Tests the CNN Forward library by running both VGG19 and Alexnet on a single image and comparing the results with Pytorch Output
-
-* Compile - `make test`
-
-* Run the test for direct convolution - `make run_direct`
-
-* Run the test for FFT-based convolution - `make run_fft`
-
-* Run the test for Winograd-based convolution - `make run_winograd`
-
-* Run the test for im2col-based convolution - `make run_im2col`
-
-* Clean the test directory - `make clean`
-
-* Requirements -
-
-  
-
-## Using MiniImageNet Data
-
-We have created a custom dataset from ImageNet with 372 images and resized them to 256X256. To use the dataset and run the batch tests, extract the zip - MiniImageNet.zip present in forward/data folder first
-
-  
-
+## For cleaning ##
+$ make tests TARGET=clean		#For the tests
+$ make profilers TARGET=clean 	#For the profiler binaries
 ```
+However, we suggest to do it manually within each directory as the ```make run```  commands cannot be run through the global Makefile. So, manually making them within each directory is a more safer option. Another reason to do it manually is if you want to differently over-ride the Makefile defaults
 
-$ cd forward/data/MiniImageNet.zip
+## Tests
+We have 3 tests that extensively check the correctness of differenet functionalities of the inferencing engine. The tests are located in different folders in the `forward/` directory. The tests are:
 
-$ unzip MiniImageNet.zip
+ 1. **Test-1 Operations Test**
+	> Located under forward/opearations_test
 
-$ cd ..
+	This tests the individual component operations in the operations.h library and compares the results with Pytorch Output
+	
+ 2. **Test-2 Single Image CNN Forward Test**
+	> Located under forward/cnn_forward_test
+		
+	This tests the CNN Forward library by running both VGG19 and Alexnet on a single image and comparing the results with Pytorch Output
+	
+ 3. **Test-3 Batch Image CNN Forward Test**
+	> Located under forward/batch_test
+	
+	This tests the CNN Forward library for a batch of 8 images by running both VGG19 and Alexnet and comparing the results with Pytorch Output
+### **How to run the tests**
+The steps to compile and run the tests mentioned above are the same through the use of makefiles. Within the respective directories, the following steps are to be followed:
+ * **Compilation:**   `$ make test`  [Can be skipped if compiled through the global makefile]
+ * **Running the tests:**
+	```
+	$ make run_direct		# For Direct Convolution
+	$ make run_fft			# For FFT Convolution
+	$ make run_winograd		# For Winograd Convolution
+	$ make run_im2col		# For IM2COL & GEMM Convolution
+	```
+ * **Clean the test directory:**  ```$ make clean```
+ 
+## Profiling
+We have two types of profiling under the `profiling/` folder in the main directory. Each profiling pipeline is split into - 
+ 1.  C++/Bash based logger which runs the forward inferencing engine, 
+ 2. Python based analyzer which generates the plots 
 
-```
+The loggers generate files which are used by the analyzers. We have provided the logger files generated by our experiments in the directories as well so that you can only run the analyzers.
+Now, we explain the two types of profiling:
 
-  
+#### Run Time Profiling
+> Located under profiling/TimeProfiling/
 
-#### Test-3 Batch Test
+This profiling setup runs a forward pass of the VGG and AlexNet architecture over multiple batch-sizes for all the convolution algorithms multiple times each (= 3 as default), measures the different times as convolution time, algorithmic overhead time and total time and compares them [More details of the experimental setup are provided in the concerned directory]. The steps to run it are as follows:
 
-Located under forward/batch_test:
+* **Compilation:**   `$ make`  [Can be skipped if compiled through the global makefile]
+* **Running the C++ based logger:**
+	```
+	$ make run_vgg		# For VGG
+	$ make run_alex		# For AlexNet
+	```
+	By default, this code runs 3 iterations of each batchsize and kernel setting for more statistically sound results. This can be changed, however we faced some issues in Colab when increasing it beyon 3 so that should be kept in mind. To change this default:
+	```
+	$ make run_<vgg/alex> NUM_RUNS=<NUMBER> 
+	```
+	This will generate the log files - `logVGG.txt` and `logALEX.txt`
+* **Running the Analyzer:**
+	The analyzer can be run be as follows:
+	```
+	$ python analyzer.py
+	``` 
+	This will take `logVGG.txt` and/or `logALEX.txt` present in the directory and generate plots in the `profiling/TimeProfiling/Plots/` folder   
+	
+* **Clean the test directory:**  ```$ make clean``` [Removes only the C++ based logger binary]
 
-* Tests the CNN Forward library for a batch of 8 images by running both VGG19 and Alexnet and comparing the results with Pytorch Output
 
-* Compile - `make test`
+#### GPU Memory Usage Profiling
+> Located under profiling/MemoryUsageProfiling/
 
-* Run the test for direct convolution - `make run_direct`
+This experimental profiling setup runs a forward pass of the VGG architecture for a single image and profiles the memory being used through ``nvidia-smi`` command. It then plots a comparison of the GPU usage pattern
 
-* Run the test for FFT-based convolution - `make run_fft`
+**[IMPORTANT] NOTE:** The logger part of this compiler cannot be run on Colab as it requires `nvidia-smi` to run in ***background*** in shell. Only analyzer can be run on the previously generated files on Colab
 
-* Run the test for Winograd-based convolution - `make run_winograd`
+The steps to compile and run this profiler are:
+ * **Compilation:**   `$ make`  [Can be skipped if compiled through the global makefile]
+* **Running the C++ and Bash based logger:**
+	```
+	$ make run
+	```
+	By default, this code runs 1 forward pass of each kernel on VGG with batch_size = 1 while a special setting of the nvidia-smi commands logs the memory usage in background. This will generate 5 files  - `memory_cudnn.txt`, `memory_direct.txt`, `memory_fft.txt`, `memory_im2col.txt`, `memory_winograd.txt` 
+	
 
-* Run the test for im2col-based convolution - `make run_im2col`
+	> In case, you encounter any issues with `make run`, manually run the `memProfiler.sh` script and try 
 
-* Clean the test directory - `make clean`
+* **Running the Analyzer:**
+	The analyzer can be run be as follows:
+	```
+	$ python memoryAnalyzer.py
+	```
+	This will take whatever of the above mentioned files are present in the directory and generate plots in the `profiling/MemoryUsageProfiling/Plots/` folder   
 
-* Requirements -
+* **Clean the test directory:**  ```$ make clean```
 
-  
+## *General Compilation Issues*
+We predict some issues that you can encounter during compilation and offer solutions:
 
-##### Notebook to run the tests on Google Colab - https://colab.research.google.com/drive/1GD7mgy3pVIKSnobhY7hSdD_3P9i5532R
+* **CUBLAS Library Error:** [Will occur definitely if you try to change CUDA Version]
+The path to CUBLAS library has been hardcoded to the Makefiles as: 
+ `/usr/local/cuda-10.1/man/man7/libcublas.so.7`
+ This may cause an error if CUBLAS is not present in that location or will most likely cause one if you are using a different version of CUDA than 10.1. You need to change this path or call all the makes as:
+	```
+	$ make <TARGET> CUBLAS=<PATH TO libcublas.so.7>
+	```
+	
+***
+#### Google Colab Notebook to run the Tests/TimeProfiling on - https://colab.research.google.com/drive/1GD7mgy3pVIKSnobhY7hSdD_3P9i5532R
