@@ -48,7 +48,6 @@ $$\scriptsize Total\text{ }Time = Convolution\text{ }Time + Pre/postprocess\text
 * **Clean the test directory:**  ```$ make clean``` [Removes only the C++ based logger binary]
 
 # Experimental Results
-## Convolution Time
 ### <ins>VGG-19</ins>
 #### Layer Wise Comparison 
 **Convolution Time :**
