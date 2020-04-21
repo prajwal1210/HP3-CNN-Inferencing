@@ -43,6 +43,7 @@
     }                                                        \
 }
 
+/* Struct to store the runtime details for profiling */
 struct profilingElapsedTime {
   float total;
   float overhead;
@@ -133,8 +134,8 @@ class Conv2D {
 
   /* Wrapper Forward Pass Operation:
    *  Computes the forward convolution on the given input by selecting the algorithm based on the convolution_algorithm attribute
-   *  Input - Values/Inputs from the previous layer (in host memory)
-   *  Output - Pointer to the result array (in host memory)
+   *  Input - Values/Inputs from the previous layer (in host memory), Reference to the struct for storing run time details for conv operation
+   *  Output - Pointer to the result array (in host memory) (side effect - time details stored in struct)
    */
   float* ConvForward(float* input, profilingElapsedTime &time_elapsed);
 

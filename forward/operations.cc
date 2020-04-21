@@ -205,7 +205,7 @@ float* Conv2D::Conv_CUDNN(float* input, profilingElapsedTime &time_elapsed) {
   return h_output;
 }
 
-/* (Conv2D)Conv_CUDNN Implementation : Forward pass using the Direct Convolution Kernel */
+/* (Conv2D)Conv_Direct Implementation : Forward pass using the Direct Convolution Kernel */
 float* Conv2D::Conv_Direct(float* input, profilingElapsedTime &time_elapsed) {
   std::cout << "USING DIRECT CONVOLUTION" << std::endl;
   int image_in_bytes = this->batchsize * this->in_channels * this->input_height * this->input_width * sizeof(float);
@@ -269,7 +269,7 @@ float* Conv2D::Conv_Direct(float* input, profilingElapsedTime &time_elapsed) {
   return h_output;
 }
 
-/* (Conv2D)Conv_CUDNN Implementation : Forward pass using FFT Kernel */
+/* (Conv2D)Conv_FFT Implementation : Forward pass using FFT Kernel */
 float* Conv2D::Conv_FFT(float* input, profilingElapsedTime &time_elapsed) {
   std::cout << "USING FFT CONVOLUTION" << std::endl;
   int image_in_bytes = this->batchsize * this->in_channels * this->input_height * this->input_width * sizeof(float);
