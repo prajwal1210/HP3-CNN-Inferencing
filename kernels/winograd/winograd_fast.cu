@@ -13,6 +13,8 @@
                 exit(EXIT_FAILURE);\
             }\
         } while(0)
+#define ACCESS(arr, off, ind) ((arr)[(off) + (ind)])
+#define ACCESS2D(arr, indx, indy) ((arr)[(indx)][(indy)])
 
 
 void gpu_error(cudaError_t const &code) {
@@ -28,42 +30,48 @@ __global__ void precompute(int och, int ch, float* kernel_weights, float *U)
     int tch = blockIdx.x;
     int toch = threadIdx.x;
    
-    float g[4][3] = {
-        {1, 0, 0},
-        {0.5, 0.5, 0.5},
-        {0.5, -0.5, 0.5},
-        {0, 0, 1}
-    };
-    
-    float g_t[3][4] ={
-        {1, 0.5, 0.5, 0},
-        {0, 0.5, -0.5, 0},
-        {0, 0.5, 0.5, 1}
-    };
-    float temp[3][4];
-    for(int i = 0; i <3; ++i)
-    {
-        for(int j = 0; j <4; ++j)
-        {
-            temp[i][j] = 0;
-            for(int k = 0; k <3; ++k)
-            {
-                temp[i][j] += kernel_weights[((toch*ch + tch)*3 + i)*3+k] * g_t[k][j];
-            }
-        }
-    }
-    for(int i = 0; i <4; ++i)
-    {
-        for(int j = 0; j <4; ++j)
-        {
-            U[((toch*ch + tch)*4 + i)*4+j] = 0;
-            for(int k = 0; k <3; ++k)
-            {
-                U[((toch*ch + tch)*4 + i)*4+j] += g[i][k] * temp[k][j];
-            }
-        }
-    }
+    float au, bu, cu, du, eu, fu, gu, hu, iu;
+    int ind = 0;
+    int offset = (toch*ch + tch)*9;
 
+    au = ACCESS(kernel_weights, offset, ind++);
+    bu = ACCESS(kernel_weights, offset, ind++);
+    cu = ACCESS(kernel_weights, offset, ind++);
+    du = ACCESS(kernel_weights, offset, ind++);
+    eu = ACCESS(kernel_weights, offset, ind++);
+    fu = ACCESS(kernel_weights, offset, ind++);
+    gu = ACCESS(kernel_weights, offset, ind++);
+    hu = ACCESS(kernel_weights, offset, ind++);
+    iu = ACCESS(kernel_weights, offset, ind++);
+    
+    ind = 0;
+    offset = (toch*ch + tch)*16;
+
+    float adg, beh, cfi, a_dg, b_eh, c_fi;
+    adg = au+du+gu;
+    beh = bu+eu+hu;
+    cfi = cu+fu+iu;
+    a_dg = au-du+gu;
+    b_eh = bu-eu+hu;
+    c_fi = cu-fu+iu;
+    
+    ACCESS(U, offset, ind++) = au;
+    ACCESS(U, offset, ind++) = 0.5*(au+bu+cu);
+    ACCESS(U, offset, ind++) = 0.5*(au-bu+cu);
+    ACCESS(U, offset, ind++) = cu;
+    ACCESS(U, offset, ind++) = 0.5*(adg);
+    ACCESS(U, offset, ind++) = 0.25*(adg+beh+cfi);
+    ACCESS(U, offset, ind++) = 0.25*(adg-beh+cfi);
+    ACCESS(U, offset, ind++) = 0.5*(cfi);
+    ACCESS(U, offset, ind++) = 0.5*(a_dg);
+    ACCESS(U, offset, ind++) = 0.25*(a_dg+b_eh+c_fi);
+    ACCESS(U, offset, ind++) = 0.25*(a_dg-b_eh+c_fi);
+    ACCESS(U, offset, ind++) = 0.5*(c_fi);
+    ACCESS(U, offset, ind++) = gu;
+    ACCESS(U, offset, ind++) = 0.5*(gu+hu+iu);
+    ACCESS(U, offset, ind++) = 0.5*(gu-hu+iu);
+    ACCESS(U, offset, ind++) = iu;
+    
 }
 
 
@@ -112,57 +120,67 @@ __global__ void cutpad(float  *devY, float *devcutY, int oph,int opw)
 
 __global__ void tile(int bs, int p, int q, int ch, float *devin, float *devsum, float *devU, int h, int w, int och, float *devfin)
 {
-    float thrtile[4][4];    
     int tbs, tp, tq, tch, Tch;
     tbs = blockIdx.x;
     tp = blockIdx.y;
     tq = blockIdx.z;
     Tch = threadIdx.x;
-    float V[4][4];
     tch = Tch / och;
+
+    float V[4][4];
+    
     // copy the tiles to thrtile
+    // int offset1 = (tbs*ch + tch)*h*w;
+    // for(int th = 2*tp, i = 0; i < 4; th++, i++)
+    //     for(int tw = 2*tq, j = 0; j < 4; tw++, j++)
+    //         thrtile[i][j] = devin[offset1 + th*w + tw];
+
     int offset1 = (tbs*ch + tch)*h*w;
-    for(int th = 2*tp, i = 0; i < 4; th++, i++)
-        for(int tw = 2*tq, j = 0; j < 4; tw++, j++)
-            thrtile[i][j] = devin[offset1 + th*w + tw];
-
-    float B[4][4] = {
-        {1,0,0,0},
-        {0,1,-1,1},
-        {-1,1,1,0},
-        {0,0,0,-1}
-    };
-    float B_t[4][4] = {
-        {1,0,-1,0},
-        {0,1,1,0},
-        {0,-1,1,0},
-        {0,1,0,-1}
-    };
+    
+    float av, bv, cv, dv, ev, fv, gv, hv, iv, jv, kv, lv, mv, nv, ov, pv;
+    int th = 2*tp, tw = 2*tq;
+    av = ACCESS(devin, offset1, th*w + tw++);
+    bv = ACCESS(devin, offset1, th*w + tw++);
+    cv = ACCESS(devin, offset1, th*w + tw++);
+    dv = ACCESS(devin, offset1, th*w + tw++);
+    th++; tw = 2*tq;
+    ev = ACCESS(devin, offset1, th*w + tw++);
+    fv = ACCESS(devin, offset1, th*w + tw++);
+    gv = ACCESS(devin, offset1, th*w + tw++);
+    hv = ACCESS(devin, offset1, th*w + tw++);
+    th++; tw = 2*tq;
+    iv = ACCESS(devin, offset1, th*w + tw++);
+    jv = ACCESS(devin, offset1, th*w + tw++);
+    kv = ACCESS(devin, offset1, th*w + tw++);
+    lv = ACCESS(devin, offset1, th*w + tw++);
+    th++; tw = 2*tq;
+    mv = ACCESS(devin, offset1, th*w + tw++);
+    nv = ACCESS(devin, offset1, th*w + tw++);
+    ov = ACCESS(devin, offset1, th*w + tw++);
+    pv = ACCESS(devin, offset1, th*w + tw++);
+    
     //Calculation of V
-    float temp[4][4];
+    int vx = 0, vy = 0;
+    ACCESS2D(V, vx, vy++) = +av-iv-cv+kv;
+    ACCESS2D(V, vx, vy++) = +bv-jv+cv-kv;
+    ACCESS2D(V, vx, vy++) = -bv+jv+cv-kv;
+    ACCESS2D(V, vx, vy++) = +bv-jv-dv+lv;
+    vx++; vy = 0;
+    ACCESS2D(V, vx, vy++) = +ev+iv-gv-kv;
+    ACCESS2D(V, vx, vy++) = +fv+jv+gv+kv;
+    ACCESS2D(V, vx, vy++) = -fv-jv+gv+kv;
+    ACCESS2D(V, vx, vy++) = +fv+jv-hv-lv;
+    vx++; vy = 0;
+    ACCESS2D(V, vx, vy++) = -ev+iv+gv-kv;
+    ACCESS2D(V, vx, vy++) = -fv+jv-gv+kv;
+    ACCESS2D(V, vx, vy++) = +fv-jv-gv+kv;
+    ACCESS2D(V, vx, vy++) = -fv+jv+hv-lv;
+    vx++; vy = 0;
+    ACCESS2D(V, vx, vy++) = +ev-mv-gv+ov;
+    ACCESS2D(V, vx, vy++) = +fv-nv+gv-ov;
+    ACCESS2D(V, vx, vy++) = -fv+nv+gv-ov;
+    ACCESS2D(V, vx, vy++) = +fv-nv-hv+pv;
 
-    for(int i = 0; i <4; ++i)
-    {
-        for(int j = 0; j <4; ++j)
-        {
-            temp[i][j] = 0;
-            for(int k = 0; k <4; ++k)
-            {
-                temp[i][j] += thrtile[i][k] * B[k][j];
-            }   
-        }
-    }
-    for(int i = 0; i <4; ++i)
-    {
-        for(int j = 0; j <4; ++j)
-        {
-            V[i][j] = 0;
-            for(int k = 0; k <4; ++k)
-            {
-                V[i][j] += B_t[i][k] * temp[k][j];
-            }
-        }
-    }
     __syncthreads();
 
     int toch = Tch % och;
@@ -200,7 +218,6 @@ __global__ void tile(int bs, int p, int q, int ch, float *devin, float *devsum, 
 
 __global__ void tile2(int bs, int p, int q, int ch, float *devin, float *devsum, float *devU, int h, int w, int och, float *devfin)
 {
-    float thrtile[4][4];    
     int tbs, tp, tq, tch, tbsf, x;
     tbsf = blockIdx.x;
     tp = blockIdx.y;
@@ -214,49 +231,58 @@ __global__ void tile2(int bs, int p, int q, int ch, float *devin, float *devsum,
     tch = x%ch; 
 
     float V[4][4];
+    
     // copy the tiles to thrtile
+    // int offset1 = (tbs*ch + tch)*h*w;
+    // for(int th = 2*tp, i = 0; i < 4; th++, i++)
+    //     for(int tw = 2*tq, j = 0; j < 4; tw++, j++)
+    //         thrtile[i][j] = devin[offset1 + th*w + tw];
+
     int offset1 = (tbs*ch + tch)*h*w;
-    for(int th = 2*tp, i = 0; i < 4; th++, i++)
-        for(int tw = 2*tq, j = 0; j < 4; tw++, j++)
-            thrtile[i][j] = devin[offset1 + th*w + tw];
-
-    float B[4][4] = {
-        {1,0,0,0},
-        {0,1,-1,1},
-        {-1,1,1,0},
-        {0,0,0,-1}
-    };
-    float B_t[4][4] = {
-        {1,0,-1,0},
-        {0,1,1,0},
-        {0,-1,1,0},
-        {0,1,0,-1}
-    };
+    float av, bv, cv, dv, ev, fv, gv, hv, iv, jv, kv, lv, mv, nv, ov, pv;
+    int th = 2*tp, tw = 2*tq;
+    av = ACCESS(devin, offset1, th*w + tw++);
+    bv = ACCESS(devin, offset1, th*w + tw++);
+    cv = ACCESS(devin, offset1, th*w + tw++);
+    dv = ACCESS(devin, offset1, th*w + tw++);
+    th++; tw = 2*tq;
+    ev = ACCESS(devin, offset1, th*w + tw++);
+    fv = ACCESS(devin, offset1, th*w + tw++);
+    gv = ACCESS(devin, offset1, th*w + tw++);
+    hv = ACCESS(devin, offset1, th*w + tw++);
+    th++; tw = 2*tq;
+    iv = ACCESS(devin, offset1, th*w + tw++);
+    jv = ACCESS(devin, offset1, th*w + tw++);
+    kv = ACCESS(devin, offset1, th*w + tw++);
+    lv = ACCESS(devin, offset1, th*w + tw++);
+    th++; tw = 2*tq;
+    mv = ACCESS(devin, offset1, th*w + tw++);
+    nv = ACCESS(devin, offset1, th*w + tw++);
+    ov = ACCESS(devin, offset1, th*w + tw++);
+    pv = ACCESS(devin, offset1, th*w + tw++);
+    
     //Calculation of V
-    float temp[4][4];
-
-    for(int i = 0; i <4; ++i)
-    {
-        for(int j = 0; j <4; ++j)
-        {
-            temp[i][j] = 0;
-            for(int k = 0; k <4; ++k)
-            {
-                temp[i][j] += thrtile[i][k] * B[k][j];
-            }   
-        }
-    }
-    for(int i = 0; i <4; ++i)
-    {
-        for(int j = 0; j <4; ++j)
-        {
-            V[i][j] = 0;
-            for(int k = 0; k <4; ++k)
-            {
-                V[i][j] += B_t[i][k] * temp[k][j];
-            }
-        }
-    }
+    int vx = 0, vy = 0;
+    ACCESS2D(V, vx, vy++) = +av-iv-cv+kv;
+    ACCESS2D(V, vx, vy++) = +bv-jv+cv-kv;
+    ACCESS2D(V, vx, vy++) = -bv+jv+cv-kv;
+    ACCESS2D(V, vx, vy++) = +bv-jv-dv+lv;
+    vx++; vy = 0;
+    ACCESS2D(V, vx, vy++) = +ev+iv-gv-kv;
+    ACCESS2D(V, vx, vy++) = +fv+jv+gv+kv;
+    ACCESS2D(V, vx, vy++) = -fv-jv+gv+kv;
+    ACCESS2D(V, vx, vy++) = +fv+jv-hv-lv;
+    vx++; vy = 0;
+    ACCESS2D(V, vx, vy++) = -ev+iv+gv-kv;
+    ACCESS2D(V, vx, vy++) = -fv+jv-gv+kv;
+    ACCESS2D(V, vx, vy++) = +fv-jv-gv+kv;
+    ACCESS2D(V, vx, vy++) = -fv+jv+hv-lv;
+    vx++; vy = 0;
+    ACCESS2D(V, vx, vy++) = +ev-mv-gv+ov;
+    ACCESS2D(V, vx, vy++) = +fv-nv+gv-ov;
+    ACCESS2D(V, vx, vy++) = -fv+nv+gv-ov;
+    ACCESS2D(V, vx, vy++) = +fv-nv-hv+pv;
+    
     __syncthreads();
 
     for(int i = 0; i <4; ++i)
@@ -297,39 +323,33 @@ __global__ void lastcal(int och, int p, int q, int bs, float *devsum, float *dev
     tq = blockIdx.z;
     toch = threadIdx.x;
 
-  float A_t[2][4] = {
-        {1, 1, 1, 0},
-        {0, 1, -1,-1}
-    };
-    float A[4][2] = {
-        {1,0},
-        {1,1},
-        {1,-1},
-        {0,-1}
-    };
-    float temp[2][4];
-    for(int i = 0; i <2; ++i)
-    {
-        for(int j = 0; j <4; ++j)
-        {
-            temp[i][j] = 0;
-            for(int k = 0; k <4; ++k)
-            {
-                temp[i][j] += A_t[i][k] * devsum[((((tbs*och+toch)*p+tp)*q+tq)*4+k)*4+j];
-            }
-        }
-    }
-    for(int i = 0; i <2; ++i)
-    {
-        for(int j = 0; j <2; ++j)
-        {
-            devY[((((tbs*och+toch)*p+tp)*q+tq)*2+i)*2+j] = 0;
-            for(int k = 0; k <4; ++k)
-            {
-                devY[((((tbs*och+toch)*p+tp)*q+tq)*2+i)*2+j] += temp[i][k] * A[k][j];
-            }
-        }
-    }
+    int offset = (((tbs*och+toch)*p+tp)*q+tq)*16;
+    float ay, by, cy, dy, ey, fy, gy, hy, iy, jy, ky, ly, my, ny, oy, py;
+    int ind = 0;
+    ay = ACCESS(devsum, offset, ind++);
+    by = ACCESS(devsum, offset, ind++);
+    cy = ACCESS(devsum, offset, ind++);
+    dy = ACCESS(devsum, offset, ind++);
+    ey = ACCESS(devsum, offset, ind++);
+    fy = ACCESS(devsum, offset, ind++);
+    gy = ACCESS(devsum, offset, ind++);
+    hy = ACCESS(devsum, offset, ind++);
+    iy = ACCESS(devsum, offset, ind++);
+    jy = ACCESS(devsum, offset, ind++);
+    ky = ACCESS(devsum, offset, ind++);
+    ly = ACCESS(devsum, offset, ind++);
+    my = ACCESS(devsum, offset, ind++);
+    ny = ACCESS(devsum, offset, ind++);
+    oy = ACCESS(devsum, offset, ind++);
+    py = ACCESS(devsum, offset, ind++);
+    
+    ind = 0;
+    offset = (((tbs*och+toch)*p+tp)*q+tq)*4;
+    
+    ACCESS(devY, offset, ind++) = ay+ey+iy+by+fy+jy+cy+gy+ky;
+    ACCESS(devY, offset, ind++) = by+fy+jy-cy-gy-ky-dy-hy-ly;
+    ACCESS(devY, offset, ind++) = ey-iy-my+fy-jy-ny+gy-ky-oy;
+    ACCESS(devY, offset, ind++) = fy-jy-ny-gy+ky+oy-hy+ly+py;
 }
 
 
