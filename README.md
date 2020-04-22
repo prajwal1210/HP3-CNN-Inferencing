@@ -110,8 +110,8 @@ $ make tests 		#For the tests
 $ make profilers 	#For the profiler binaries
 
 ## For cleaning ##
-$ make tests TARGET=clean       #For the tests
-$ make profilers TARGET=clean   #For the profiler binaries
+$ make tests TARGETS=clean       #For the tests
+$ make profilers TARGETS=clean   #For the profiler binaries
 ```
 However, we suggest to do it manually within each directory as the ```make run```  commands cannot be run through the global Makefile. So, manually making them within each directory is a more safer option. Another reason to do it manually is if you want to differently over-ride the Makefile defaults
 
@@ -141,6 +141,7 @@ The steps to compile and run the tests mentioned above are the same through the 
 	$ make run_fft			# For FFT Convolution
 	$ make run_winograd		# For Winograd Convolution
 	$ make run_im2col		# For IM2COL & GEMM Convolution
+	$ make run_cudnn		# For CUDNN API Convolution
 	```
  * **Clean the test directory:**  ```$ make clean```
  
