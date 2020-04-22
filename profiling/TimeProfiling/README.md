@@ -118,7 +118,7 @@ From the above plots, we can draw the conclusions that:
 > ***Note:*** The plots follow a log-scale on the Y-axis 
 
 From the above plots, we can draw the following conclusions:
-* Im2Col/GEMM Convolution is the fastes as in VGG
+* Im2Col/GEMM Convolution is the fastest as in VGG
 * Interestingly, for the first layer FFT Convolution performs worse than Direct Convolution even though the kernel size is 11x11 because of the same reason as stated in the VGG section regarding first layer performance:
 	* *Reason:* CUFFT algorithm works best when the input size can be rerpesented as 2n x 3m x 5p x 7q, however due to padding the input dimensions at each layer cannot be prime factorized this way leading to CUFFT using a slower algorithm
 * For the second layer (for both batchsizes), when the kernel is 5x5, FFT performs better than Direct Convolution and then goes back to performing badly for 3x3 filters
@@ -155,6 +155,6 @@ From the above graphs, the following conclusions can be drawn:
 
 From the above plots, we can draw the conclusions that:
 * Im2Col is undoubtedly the fastest of all our implementations across any batchsize
-* Unlike in VGG, the convolution time for Direct Convolution does not increase as badly and therfore it is the second best performing kernel throughout
+* Unlike in VGG, the convolution time for Direct Convolution does not increase as badly and therefore it is the second best performing kernel throughout
 * The increase in FFT pre/post processing overhead with batchsize is not sharp even though the overhead itself is quite large. We can also infer that the other overheads increase with batchsize.
  
