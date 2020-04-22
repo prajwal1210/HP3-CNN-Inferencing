@@ -17,7 +17,7 @@
 **/*temp*
 
 ## .DS_Store ##
-**/*DS_Store*
+**/.*
 
 ## Images ##
 **/*.jpg
@@ -25,5 +25,8 @@
 ## Data ##
 forward/data/MiniImageNet/
 
-# Ipynb checkpoints #
-**/.ipynb_checkpoints/
+## Application intermediate files like DS_Store, ipynb checkpoints ##
+**/.*
+
+## Except gitignores ##
+!**/.gitignore

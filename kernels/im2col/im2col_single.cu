@@ -8,17 +8,18 @@ __global__ void im2col_kernel(const float * data_im, float * data_col, const int
 							  const int ih, const int iw, const int ic,
 							  const int hcol, const int wcol) 
 {
-	CUDA_KERNEL_LOOP(index, n)
-	{
-		int imidx = blockIdx.y;
+	// esentially this loop would have run batch size number of times
+	// but since we are iterating over each image separately, it executes just once
+	CUDA_KERNEL_LOOP(index, n) {
 		int w_out = index % wcol;
 		index /= wcol;
 		int h_out = index % hcol;
 		int channel_in = index / hcol;
+		int channel_out = channel_in * kh * kw;
 		int h_in = h_out * stride - pad;
 		int w_in = w_out * stride - pad;
-		data_im += ((imidx * ic + channel_in) * ih + h_in) * iw + w_in;
-		data_col += ((imidx * ic + channel_in) * kh * kw * hcol + h_out) * wcol + w_out;
+		data_im += (channel_in * ih + h_in) * iw + w_in;
+		data_col += (channel_out * hcol + h_out) * wcol + w_out;
 		#pragma unroll
 		for (int i = 0; i < kh; ++i) {
 			for (int j = 0; j < kw; ++j) {
@@ -32,13 +33,13 @@ __global__ void im2col_kernel(const float * data_im, float * data_col, const int
 	}
 }
 
-// takes a batch of images on GPU: bs x ic x ih x iw (ic: input channels, bs: batch size)
+// takes in the image on GPU: ic x ih x iw (ic: input channels)
 // and the kernels on GPU: oc x ic x kh x kw (oc: output channels)
-// does the convolution and returns output feature map
+// does the convolution and returns
 void im2col_gemm_gpu(const float * data_im, const float * data_ker, cublasHandle_t handle,
 					 const int kh, const int kw, const int pad, const int stride,
 					 const int ih, const int iw, const int ic, const int oc,
-					 float * data_col, float * data_out, int bs)
+					 float * data_col, float * data_out)
 {
 	// Step 1: convert the image to col form
 	
@@ -46,14 +47,12 @@ void im2col_gemm_gpu(const float * data_im, const float * data_ker, cublasHandle
 	int hcol = (ih + 2 * pad - kh) / stride + 1;
 	int wcol = (iw + 2 * pad - kw) / stride + 1;
 
-	// We are going to launch bs groups of ic * hcol * wcol kernels threads for im2col,
+	// We are going to launch ic * hcol * wcol kernels threads for im2col,
 	// each thread is responsible for copying a single-channel grid
 	// one thread per output pixel in the output of conv
-	// So, all images in batch are converted to col form parallely
 	int op_size = ic * hcol * wcol;
-	dim3 blocks(GET_BLOCKS(op_size), bs, 1);
-	dim3 threads(CUDA_NUM_THREADS, 1, 1);
-	im2col_kernel<<<blocks, threads>>>(data_im, data_col, op_size, kh, kw, pad, stride, ih, iw, ic, hcol, wcol);
+	im2col_kernel<<<GET_BLOCKS(op_size), CUDA_NUM_THREADS>>>(
+		data_im, data_col, op_size, kh, kw, pad, stride, ih, iw, ic, hcol, wcol);
 	CUDA_POST_KERNEL_CHECK; // check if there was any error
 
 	// now, the col form shall be multiplied with the kernels laid out straight i.e. (ic * kh * kw)
@@ -74,9 +73,6 @@ void im2col_gemm_gpu(const float * data_im, const float * data_ker, cublasHandle
 	int m = ldA = ldC = hcol * wcol;
 	int n = oc;
 	int k = ldB = ic * kh * kw;
-	long long int strideA = m * k;	// size of each col form
-	long long int strideB = 0;		// reusing the same kernel matrix for each image
-	long long int strideC = m * n;	// size of output feature map
 	
 	// CUDA sees matrices as column major
 	// So, a matrix we see as HxW, it would see as WxH in the same memory layout
@@ -85,20 +81,19 @@ void im2col_gemm_gpu(const float * data_im, const float * data_ker, cublasHandle
 	// Output would be matB' * matA' (CUDA view) = (matA * matB)' (CUDA view) = matA * matB (our view)
 	// In essence, trust me when I do col * kernel to achieve kernel * col
 	cublasStatus_t ret =
-		cublasSgemmStridedBatched(handle, CUBLAS_OP_N, CUBLAS_OP_N, m, n, k, &alpha, data_col, 
-						ldA, strideA, data_ker, ldB, strideB, &beta, data_out, ldC, strideC, bs);
+		cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, m, n, k, &alpha,
+					data_col, ldA, data_ker, ldB, &beta, data_out, ldC);
 	CUBLAS_CHECK(ret, "cublas Sgemm returned an error!");
 }
 
 float * im2colWithCuda(const float * data_im, const float * data_ker, const int batch,
 					   const int kh, const int kw, const int pad, const int stride,
-					   const int ih, const int iw, const int ic, const int oc, 
-					   float& conv_time, float& overhead_time)
+					   const int ih, const int iw, const int ic, const int oc, float& conv_time, float& overhead_time)
 {
-
 	// Timing variables - CUDA Event API
 	overhead_time = 0;
 	conv_time = 0;
+	float milliseconds = 0;
 	cudaEvent_t start, stop;
 	cudaEventCreate(&start);
 	cudaEventCreate(&stop);  
@@ -142,15 +137,28 @@ float * im2colWithCuda(const float * data_im, const float * data_ker, const int 
 	// cuBLAS initialize
 	cublasHandle_t handle;
 	CUBLAS_CHECK(cublasCreate(&handle), "cublasCreate() error!");
-	
-	// Record the kernel run time
-	cudaEventRecord(start);
-	// Kernel launch
-	im2col_gemm_gpu(dev_image, dev_kernel, handle, kh, kw, pad, stride, ih, iw, ic, oc, dev_col, dev_ret, batch);
-	cudaEventRecord(stop);
-	
-	cudaEventSynchronize(stop);
-	cudaEventElapsedTime(&conv_time, start, stop);
+
+	// loop over the batch
+	const float * t_dev_image = dev_image;
+	float * t_dev_col = dev_col;
+	float * t_dev_ret = dev_ret;
+	for(int i = 0; i < batch; i++)
+	{
+		cudaEventRecord(start);
+		// Launch GPU kernel to work on each image
+		im2col_gemm_gpu(t_dev_image, dev_kernel, handle, kh, kw, pad, 
+							stride, ih, iw, ic, oc, t_dev_col, t_dev_ret);
+		cudaEventRecord(stop);
+		
+		t_dev_image += image_size;
+		t_dev_col += one_col;
+		t_dev_ret += output_feature;
+		
+		cudaEventSynchronize(stop);
+		milliseconds = 0;
+		cudaEventElapsedTime(&milliseconds, start, stop);
+		conv_time += milliseconds;
+	}
 
 	// cuBLAS finalize
 	CUBLAS_CHECK(cublasDestroy(handle), "cublasDestroy() error!");
@@ -162,13 +170,11 @@ float * im2colWithCuda(const float * data_im, const float * data_ker, const int 
 	float * data_ret = (float *)malloc(result_size * sizeof(float));
 	CUDA_CHECK(cudaMemcpy(data_ret, dev_ret, result_size * sizeof(float), cudaMemcpyDeviceToHost));
 
-	// Free all memory
 	cudaFree(dev_image);
 	cudaFree(dev_col);
 	cudaFree(dev_kernel);
 	cudaFree(dev_ret);
 	
-	// Free timing resources
 	cudaEventDestroy(start);
 	cudaEventDestroy(stop);
 
@@ -176,8 +182,7 @@ float * im2colWithCuda(const float * data_im, const float * data_ker, const int 
 }
 
 float* IM2COL::forward(int out_size, int channel, int kernel_height, int kernel_width, int pad, 
-		int stride, float* kernel, int batch_size, int input_height, int input_width, float* input, 
-		float& conv_time, float& overhead_time)
+		int stride, float* kernel, int batch_size, int input_height, int input_width, float* input, float& conv_time, float& overhead_time)
 {
 	return im2colWithCuda(input, kernel, batch_size, kernel_height, kernel_width, 
 					pad, stride, input_height, input_width, channel, out_size, conv_time, overhead_time);
