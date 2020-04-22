@@ -11,13 +11,13 @@
 
 
 /* Macro to check CUDA error and print the error message */
-#define CUDA_CHECK(condition) {                              \
-	cudaError_t error = (condition);                         \
-	if (error != cudaSuccess) {                              \
-		std::cerr << "CUDA Error on line " << __LINE__ << ": "    \
-				  << cudaGetErrorString(error) << std::endl; \
-      std::exit(EXIT_FAILURE);                               \
-    }                                                        \
+#define CUDA_CHECK(condition) {									\
+	cudaError_t error = (condition);							\
+	if (error != cudaSuccess) {									\
+		std::cerr << "CUDA Error on line " << __LINE__ << ": "	\
+				  << cudaGetErrorString(error) << std::endl;	\
+		std::exit(EXIT_FAILURE);								\
+	}															\
 }
 
 #define CUDA_POST_KERNEL_CHECK CUDA_CHECK(cudaPeekAtLastError())
@@ -25,19 +25,19 @@
 /* Function to check cuBLAS error and print the error message */
 void inline CUBLAS_CHECK(cublasStatus_t status, std::string msg)
 {
-    if (status != CUBLAS_STATUS_SUCCESS)
-    {
-        std::cerr << msg << " at line " << __LINE__ << std::endl;
-        std::exit(EXIT_FAILURE);
-    }
+	if (status != CUBLAS_STATUS_SUCCESS)
+	{
+		std::cerr << msg << " at line " << __LINE__ << std::endl;
+		std::exit(EXIT_FAILURE);
+	}
 }
-
 
 // CUDA: grid stride looping
 #define CUDA_KERNEL_LOOP(i, n) \
 	for (int i = blockIdx.x * blockDim.x + threadIdx.x; \
 	i < (n); \
 	i += blockDim.x * gridDim.x)
+
 
 // CUDA: thread number configuration.
 // Use 1024 threads per block, which requires cuda sm_2x or above,
