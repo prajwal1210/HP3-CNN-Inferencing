@@ -216,5 +216,14 @@ The path to CUBLAS library has been hardcoded to the Makefiles as:
 	$ make <TARGET> CUBLAS=<PATH TO libcublas.so.7>
 	```
 	
+
+# Profiling Results
+
+The profiling results are explained in the following READMEs within appropriate directories:
+* [Time Profiling](profiling/TimeProfiling/README.md)
+* [GPU Memory Usage Profiling Profiling](profiling/MemoryUsageProfiling/README.md)
+
+The explanation regarding other files like kernel implementations are available in the respective folders
 ***
-#### Google Colab Notebook to run the Tests/TimeProfiling on - https://colab.research.google.com/drive/1GD7mgy3pVIKSnobhY7hSdD_3P9i5532R
+
+#### Google Colab Notebook to run the Tests/TimeProfiling on - https://colab.research.google.com/drive/1yjsrzHxDNiFaRRBKb8oK6P7b-ZQCU7Qn
