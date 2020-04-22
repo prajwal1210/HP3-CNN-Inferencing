@@ -16,7 +16,8 @@ FFT_FILE = fft_fast.cu
 FFT_KERNEL = $(shell find $(PROJECT_DIR) -name $(FFT_FILE))
 WINOGRAD_FILE = winograd_fast.cu
 WINOGRAD_KERNEL = $(shell find $(PROJECT_DIR) -name $(WINOGRAD_FILE))
-IM2COL_KERNEL = $(shell find $(PROJECT_DIR) -name im2col.cu)
+IM2COL_FILE = im2col.cu
+IM2COL_KERNEL = $(shell find $(PROJECT_DIR) -name $(IM2COL_FILE))
 TARGET = mem_prof
 PROFILER_SCRIPT = memProfiler.sh
 
