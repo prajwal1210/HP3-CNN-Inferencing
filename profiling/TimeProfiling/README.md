@@ -64,7 +64,10 @@ Through these comparisons, we can draw the following important conclusions:
 		*  *Reason :* CUFFT algorithm works best when the input size can be rerpesented as 2n x 3m x 5p x 7q, however due to padding the input dimensions at each layer cannot be prime factorized this way leading to CUFFT using a slower algorithm 
 	* For the first layer, the FFT kernel time fluctuates and is much greater than Direct Convolution.
 		* *Reason :*  The reason again has to do with CUFFT efficiency and prime factorization of the input size. CUFFT works best when the prime factors, even among {2,3,5,7}, are as small as possible (so, only 2s is the best). However, in the first layer we input channels = 3 while in the subsequent layers input channels = $2^n$, hence accounting for the higher time. 
-	* Our Winograd Implementation is the slowest because  "FILL HERE"
+	* Our Winograd Implementation is the slowest because:
+        * *Reason :* Due to processing each tile in parallel, the advantage of reducing these many operations isn’t reflected
+        * *Reason :* We are using 4 times extra memory and a number of extra operations
+
 * *For Batch-size = 8:*
 	* Surprisingly, FFT outperforms Direct Convolution for almost all the layers. Keeping in mind that our FFT implementation actually loops over the batchsize, it's easy to see that Direct Convolution scales much worse with batchsize
 	* Winograd is still the slowest because it loops over batchsize as well
