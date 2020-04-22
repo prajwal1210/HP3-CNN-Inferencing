@@ -13,6 +13,8 @@ In order to capture run time of the different convolution methods, we use CUDA E
 * ***Total Time*** - This is the total time taken for the function call which includes Convolution Time, Pre/post process Overhead Time **AS WELL AS** the time taken for memory operations like CudaMalloc, etc.
 $$\scriptsize Total\text{ }Time = Convolution\text{ }Time + Pre/postprocess\text{ }Overhead\text{ }Time + \text{ Any other overhead due to memory operations }$$
 
+> **Note** - Convolution and Overhead Time for CUDNN API Call were assumed to be 0 since we don't know how the split is internally. Only Total Time is considered
+
 # Experimental Setup
 * **Logger** [`timeProfiler.cc`] 
 	This C++ script takes the following inputs:
