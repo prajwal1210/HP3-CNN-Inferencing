@@ -12,7 +12,7 @@ This project aims at implementing several convolution kernels for a CNN Inferenc
 
 # Overview of Implementation
 The following diagram represents an overview of our system:
-![Implementation Overview](https://github.com/prajwal1210/HP3-CNN-Inferencing/blob/documentation/documentaion-files/ImplementationOverview.png)
+![Implementation Overview](https://github.com/prajwal1210/HP3-CNN-Inferencing/blob/master/documentaion-files/ImplementationOverview.png)
   
 # Directory Structure
 Here, we briefly explain the skeleton directory structure of the project. The concrete implementation details of the various components shown in the diagram above are present within the respective directories:
