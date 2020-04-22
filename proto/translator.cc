@@ -2,11 +2,12 @@
  * translator.cc:									                          *
  * Implementation of translator.h                           *
  *                                                          *
- * Author: Tanay Bhartia								                    *
+ * Author: Tanay Bhartia, Prajwal Singhania                 *
  ************************************************************/
 
 #include "translator.h"
 
+/* Implementation of (Translator)translateConv2D_layer */
 Conv2D* Translator::translateConv2D_layer(DeepNet::Layer& layer, cudnnHandle_t cudnn, int input_height, int input_width, int batchsize, customAlgorithmType algo) {
   if(!layer.has_conv()) {
     std::cerr << "Error in translateConv2D_layer: Not a conv2D layer" << std::endl;
@@ -34,6 +35,7 @@ Conv2D* Translator::translateConv2D_layer(DeepNet::Layer& layer, cudnnHandle_t c
   return retVal;
 }
 
+/* Implementation of (Translator)translatePool_layer */
 Pool* Translator::translatePool_layer(DeepNet::Layer& layer, cudnnHandle_t cudnn, int batchsize, int in_channels, int input_height, int input_weight) {
   if(!layer.has_pool()) {
     std::cerr << "Error in translatePool_layer: Not a Pool layer" << std::endl;
@@ -45,6 +47,7 @@ Pool* Translator::translatePool_layer(DeepNet::Layer& layer, cudnnHandle_t cudnn
   return retVal;
 }
 
+/* Implementation of (Translator)translateAdaptivePool_layer */
 Pool* Translator::translateAdaptivePool_layer(DeepNet::Layer& layer, cudnnHandle_t cudnn, int batchsize, int in_channels, int input_height, int input_weight) {
   if(!layer.has_apool()) {
     std::cerr << "Error in translatePool_layer: Not an Adaptive Pool layer" << std::endl;
@@ -56,6 +59,7 @@ Pool* Translator::translateAdaptivePool_layer(DeepNet::Layer& layer, cudnnHandle
   return retVal;
 }
 
+/* Implementation of (Translator)translateActivation_layer */
 Activation* Translator::translateActivation_layer(DeepNet::Layer& layer, cudnnHandle_t cudnn, int batchsize, int in_channels, int input_height, int input_width) {
   if(!layer.has_act()) {
     std::cerr << "Error in translateActivation_layer: Not an Activation layer" << std::endl;
@@ -67,6 +71,7 @@ Activation* Translator::translateActivation_layer(DeepNet::Layer& layer, cudnnHa
   return retVal;
 }
 
+/* Implementation of (Translator)translateLinear_layer */
 Linear* Translator::translateLinear_layer(DeepNet::Layer& layer, cudnnHandle_t cudnn, cublasHandle_t cublas, int batchsize){
   if(!layer.has_linear()){
     std::cerr << "Error in translateLinear_layer: Not a Linear layer" << std::endl;
