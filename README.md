@@ -110,8 +110,8 @@ $ make tests 		#For the tests
 $ make profilers 	#For the profiler binaries
 
 ## For cleaning ##
-$ make tests TARGET=clean		#For the tests
-$ make profilers TARGET=clean 	#For the profiler binaries
+$ make tests TARGET=clean       #For the tests
+$ make profilers TARGET=clean   #For the profiler binaries
 ```
 However, we suggest to do it manually within each directory as the ```make run```  commands cannot be run through the global Makefile. So, manually making them within each directory is a more safer option. Another reason to do it manually is if you want to differently over-ride the Makefile defaults
 
