@@ -3,31 +3,37 @@
 // converts an image of shape: ic x ih x iw (ic: input_channels in image)
 // to 2D col of shape: (ic * kh * kw) x (hcol * wcol)
 // data_im is pointer to image, data_col is pointer to output
-__global__ void im2col_kernel(const float * data_im, float * data_col, const int n,
+__global__ void im2col_kernel(const float * data_im, float * data_col, const int n, const int bs,
 							  const int kh, const int kw, const int pad, const int stride,
 							  const int ih, const int iw, const int ic,
 							  const int hcol, const int wcol) 
 {
 	CUDA_KERNEL_LOOP(index, n)
 	{
-		int imidx = blockIdx.y;
 		int w_out = index % wcol;
 		index /= wcol;
 		int h_out = index % hcol;
 		int channel_in = index / hcol;
+		int channel_out = channel_in * kh * kw;
 		int h_in = h_out * stride - pad;
 		int w_in = w_out * stride - pad;
-		data_im += ((imidx * ic + channel_in) * ih + h_in) * iw + w_in;
-		data_col += ((imidx * ic + channel_in) * kh * kw * hcol + h_out) * wcol + w_out;
-		#pragma unroll
-		for (int i = 0; i < kh; ++i) {
-			for (int j = 0; j < kw; ++j) {
-				int h = h_in + i;
-				int w = w_in + j;
-				*data_col = (h >= 0 && w >= 0 && h < ih && w < iw) ?
-				  data_im[i * iw + j]: 0;
-				data_col += hcol * wcol;
+		data_im += (channel_in * ih + h_in) * iw + w_in;
+		data_col += (channel_out * hcol + h_out) * wcol + w_out;
+		for (int imidx = 0; imidx < bs; ++imidx)
+		{
+			#pragma unroll
+			for (int i = 0; i < kh; ++i) {
+				for (int j = 0; j < kw; ++j) {
+					int h = h_in + i;
+					int w = w_in + j;
+					*data_col = (h >= 0 && w >= 0 && h < ih && w < iw) ?
+					  data_im[i * iw + j]: 0;
+					data_col += hcol * wcol;
+				}
 			}
+			// data_col -= kh * kw * hcol * wcol
+			data_im += ic * ih * iw;
+			data_col += (ic - 1) * kh * kw * hcol * wcol;
 		}
 	}
 }
@@ -51,9 +57,8 @@ void im2col_gemm_gpu(const float * data_im, const float * data_ker, cublasHandle
 	// one thread per output pixel in the output of conv
 	// So, all images in batch are converted to col form parallely
 	int op_size = ic * hcol * wcol;
-	dim3 blocks(GET_BLOCKS(op_size), bs, 1);
-	dim3 threads(CUDA_NUM_THREADS, 1, 1);
-	im2col_kernel<<<blocks, threads>>>(data_im, data_col, op_size, kh, kw, pad, stride, ih, iw, ic, hcol, wcol);
+	im2col_kernel<<<GET_BLOCKS(op_size), CUDA_NUM_THREADS>>>(data_im, data_col, op_size, bs, kh, 
+		kw, pad, stride, ih, iw, ic, hcol, wcol);
 	CUDA_POST_KERNEL_CHECK; // check if there was any error
 
 	// now, the col form shall be multiplied with the kernels laid out straight i.e. (ic * kh * kw)
@@ -143,12 +148,12 @@ float * im2colWithCuda(const float * data_im, const float * data_ker, const int 
 	cublasHandle_t handle;
 	CUBLAS_CHECK(cublasCreate(&handle), "cublasCreate() error!");
 	
-	// Record the kernel run time
+	// Record the kernel
 	cudaEventRecord(start);
-	// Kernel launch
 	im2col_gemm_gpu(dev_image, dev_kernel, handle, kh, kw, pad, stride, ih, iw, ic, oc, dev_col, dev_ret, batch);
 	cudaEventRecord(stop);
 	
+
 	cudaEventSynchronize(stop);
 	cudaEventElapsedTime(&conv_time, start, stop);
 

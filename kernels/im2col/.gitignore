@@ -1,0 +1,6 @@
+/*
+!.gitignore
+!im2col.hpp
+!im2col.cu
+!im2col2.cu
+!im2col_single.cu
