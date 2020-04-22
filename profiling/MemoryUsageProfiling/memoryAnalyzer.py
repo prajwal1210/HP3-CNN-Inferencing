@@ -1,3 +1,10 @@
+#############################################################
+#  memoryAnalyzer.py:                                       #
+#  Analyzes and Plots the graph based on the logged files   #
+#                                                           #
+#  Author: Prajwal Singhania                                #
+#############################################################
+
 import os 
 import matplotlib
 if os.environ.get('DISPLAY','') == '':
