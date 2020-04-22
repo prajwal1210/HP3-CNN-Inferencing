@@ -51,8 +51,8 @@ $$\scriptsize Total\text{ }Time = Convolution\text{ }Time + Pre/postprocess\text
 ### <ins>VGG-19</ins>
 #### Layer Wise Comparison 
 **Convolution Time :**
-![](https://github.com/prajwal1210/HP3-CNN-Inferencing/blob/documentation/profiling/TimeProfiling/Plots/VGG/LayerWise_VGGCONV_1.png)
-![](https://github.com/prajwal1210/HP3-CNN-Inferencing/blob/documentation/profiling/TimeProfiling/Plots/VGG/LayerWise_VGGCONV_8.png) 
+![](https://github.com/prajwal1210/HP3-CNN-Inferencing/blob/master/profiling/TimeProfiling/Plots/VGG/LayerWise_VGGCONV_1.png)
+![](https://github.com/prajwal1210/HP3-CNN-Inferencing/blob/master/profiling/TimeProfiling/Plots/VGG/LayerWise_VGGCONV_8.png) 
 
 > ***Note:*** The plots follow a log-scale on the Y-axis 
 
@@ -74,8 +74,8 @@ Through these comparisons, we can draw the following important conclusions:
 * The trend of convolution time across the layers remains the same for each algorithm
 	***
 **[Post/Pre Processing] Overhead Time :**
-![](https://github.com/prajwal1210/HP3-CNN-Inferencing/blob/documentation/profiling/TimeProfiling/Plots/VGG/LayerWise_VGGOVERHEAD_1.png)
-![](https://github.com/prajwal1210/HP3-CNN-Inferencing/blob/documentation/profiling/TimeProfiling/Plots/VGG/LayerWise_VGGOVERHEAD_8.png)
+![](https://github.com/prajwal1210/HP3-CNN-Inferencing/blob/master/profiling/TimeProfiling/Plots/VGG/LayerWise_VGGOVERHEAD_1.png)
+![](https://github.com/prajwal1210/HP3-CNN-Inferencing/blob/master/profiling/TimeProfiling/Plots/VGG/LayerWise_VGGOVERHEAD_8.png)
 
 > ***Note:***  
 > 1. The plots follow a log-scale on the Y-axis 
@@ -88,8 +88,8 @@ From the above plots, we can draw the following important conclusions:
 * The somewhat larger overhead for Winograd (remember, this is log scale so FFT is 8-10 times more) is because we have to crop the output as well
 	***
 **Total Time :**
-![](https://github.com/prajwal1210/HP3-CNN-Inferencing/blob/documentation/profiling/TimeProfiling/Plots/VGG/LayerWise_VGGTOTAL_1.png)
-![](https://github.com/prajwal1210/HP3-CNN-Inferencing/blob/documentation/profiling/TimeProfiling/Plots/VGG/LayerWise_VGGTOTAL_8.png)
+![](https://github.com/prajwal1210/HP3-CNN-Inferencing/blob/master/profiling/TimeProfiling/Plots/VGG/LayerWise_VGGTOTAL_1.png)
+![](https://github.com/prajwal1210/HP3-CNN-Inferencing/blob/master/profiling/TimeProfiling/Plots/VGG/LayerWise_VGGTOTAL_8.png)
 > ***Note:*** The plots follow a log-scale on the Y-axis 
 
 From the above graphs, the following conclusions can be drawn:
@@ -100,7 +100,7 @@ From the above graphs, the following conclusions can be drawn:
 #### BatchWise Comparison
 | Convolution Time | [Pre/post processing] Overhead Time  | Total Time |		 	
 |--|--|--|
-| ![](https://github.com/prajwal1210/HP3-CNN-Inferencing/blob/documentation/profiling/TimeProfiling/Plots/VGG/BatchWise_VGGCONV.png) | ![](https://github.com/prajwal1210/HP3-CNN-Inferencing/blob/documentation/profiling/TimeProfiling/Plots/VGG/BatchWise_VGGOVERHEAD.png) | ![](https://github.com/prajwal1210/HP3-CNN-Inferencing/blob/documentation/profiling/TimeProfiling/Plots/VGG/BatchWise_VGGTOTAL.png) |
+| ![](https://github.com/prajwal1210/HP3-CNN-Inferencing/blob/master/profiling/TimeProfiling/Plots/VGG/BatchWise_VGGCONV.png) | ![](https://github.com/prajwal1210/HP3-CNN-Inferencing/blob/master/profiling/TimeProfiling/Plots/VGG/BatchWise_VGGOVERHEAD.png) | ![](https://github.com/prajwal1210/HP3-CNN-Inferencing/blob/master/profiling/TimeProfiling/Plots/VGG/BatchWise_VGGTOTAL.png) |
 > ***Note:*** The plots follow a log-scale on the Y-axis 
 
 From the above plots, we can draw the conclusions that:
@@ -117,7 +117,7 @@ From the above plots, we can draw the conclusions that:
 **Convolution Time :**
 | Batchsize = 1  | Batchsize = 8  |
 |--|--|
-| ![](https://github.com/prajwal1210/HP3-CNN-Inferencing/blob/documentation/profiling/TimeProfiling/Plots/ALEX/LayerWise_ALEXCONV_1.png) | ![enter image description here](https://github.com/prajwal1210/HP3-CNN-Inferencing/blob/documentation/profiling/TimeProfiling/Plots/ALEX/LayerWise_ALEXCONV_8.png) |
+| ![](https://github.com/prajwal1210/HP3-CNN-Inferencing/blob/master/profiling/TimeProfiling/Plots/ALEX/LayerWise_ALEXCONV_1.png) | ![enter image description here](https://github.com/prajwal1210/HP3-CNN-Inferencing/blob/master/profiling/TimeProfiling/Plots/ALEX/LayerWise_ALEXCONV_8.png) |
 > ***Note:*** The plots follow a log-scale on the Y-axis 
 
 From the above plots, we can draw the following conclusions:
@@ -130,7 +130,7 @@ From the above plots, we can draw the following conclusions:
 **[Post/Pre Processing] Overhead Time :**
 |Batchsize = 1|Batchsize = 8  |
 |--|--|
-| ![](https://github.com/prajwal1210/HP3-CNN-Inferencing/blob/documentation/profiling/TimeProfiling/Plots/ALEX/LayerWise_ALEXOVERHEAD_1.png) | ![](https://github.com/prajwal1210/HP3-CNN-Inferencing/blob/documentation/profiling/TimeProfiling/Plots/ALEX/LayerWise_ALEXOVERHEAD_8.png) |
+| ![](https://github.com/prajwal1210/HP3-CNN-Inferencing/blob/master/profiling/TimeProfiling/Plots/ALEX/LayerWise_ALEXOVERHEAD_1.png) | ![](https://github.com/prajwal1210/HP3-CNN-Inferencing/blob/master/profiling/TimeProfiling/Plots/ALEX/LayerWise_ALEXOVERHEAD_8.png) |
 
 > ***Note:***  
 > 1. The plots follow a log-scale on the Y-axis 
@@ -143,7 +143,7 @@ From the above plots, we can draw the following conclusions:
 **Total Time :**
 | Batchsize = 1 | Batchsize = 8 |
 |--|--|
-| ![](https://github.com/prajwal1210/HP3-CNN-Inferencing/blob/documentation/profiling/TimeProfiling/Plots/ALEX/LayerWise_ALEXTOTAL_1.png) | ![](https://github.com/prajwal1210/HP3-CNN-Inferencing/blob/documentation/profiling/TimeProfiling/Plots/ALEX/LayerWise_ALEXTOTAL_8.png) |
+| ![](https://github.com/prajwal1210/HP3-CNN-Inferencing/blob/master/profiling/TimeProfiling/Plots/ALEX/LayerWise_ALEXTOTAL_1.png) | ![](https://github.com/prajwal1210/HP3-CNN-Inferencing/blob/master/profiling/TimeProfiling/Plots/ALEX/LayerWise_ALEXTOTAL_8.png) |
 > ***Note:*** The plots follow a log-scale on the Y-axis 
 
 From the above graphs, the following conclusions can be drawn:
@@ -153,7 +153,7 @@ From the above graphs, the following conclusions can be drawn:
 #### BatchWise Comparison
 | Convolution Time | [Pre/post processing] Overhead Time  | Total Time |		 	
 |--|--|--|
-| ![](https://github.com/prajwal1210/HP3-CNN-Inferencing/blob/documentation/profiling/TimeProfiling/Plots/ALEX/BatchWise_ALEXCONV.png)  | ![](https://github.com/prajwal1210/HP3-CNN-Inferencing/blob/documentation/profiling/TimeProfiling/Plots/ALEX/BatchWise_ALEXOVERHEAD.png) | ![](https://github.com/prajwal1210/HP3-CNN-Inferencing/blob/documentation/profiling/TimeProfiling/Plots/ALEX/BatchWise_ALEXTOTAL.png) |
+| ![](https://github.com/prajwal1210/HP3-CNN-Inferencing/blob/master/profiling/TimeProfiling/Plots/ALEX/BatchWise_ALEXCONV.png)  | ![](https://github.com/prajwal1210/HP3-CNN-Inferencing/blob/master/profiling/TimeProfiling/Plots/ALEX/BatchWise_ALEXOVERHEAD.png) | ![](https://github.com/prajwal1210/HP3-CNN-Inferencing/blob/master/profiling/TimeProfiling/Plots/ALEX/BatchWise_ALEXTOTAL.png) |
 > ***Note:*** The plots follow a log-scale on the Y-axis 
 
 From the above plots, we can draw the conclusions that:

@@ -19,7 +19,7 @@ This libary provides two functions:
 # Data Utilities
 The `data_util.h` library provides classes to load a single image as well as our custom Mini Image Net Dataset in batches:
 * *Mini Image Net Dataset:*
-	We created this dataset by downloading a portion of the ImageNet using the tool - [ImageNet Downloader Tool](https://github.com/mf1024/ImageNet-Datasets-Downloader) and then resizing the images to 256x256 The dataset contains 372 images
+	We created this dataset by downloading a portion of the ImageNet using the tool - [ImageNet Downloader Tool](https://github.com/mf1024/ImageNet-Datasets-Downloader) and then resizing the images to 256x256. The dataset contains 372 images
 
 # Correctness Tests
 We have 3 tests that extensively check the correctness of differenet functionalities of the inferencing engine. The tests are located in different folders in the this directory. The tests are:
@@ -27,12 +27,12 @@ We have 3 tests that extensively check the correctness of differenet functionali
  1. **Test-1 Operations Test**
 	> Located under opearations_test/
 
-	This tests the individual component operations in the operations.h library and compares the results with Pytorch Output
+	This tests the individual component operations in the operations.h library and compares the results with Pytorch output
 	
  2. **Test-2 Single Image CNN Forward Test**
 	> Located under cnn_forward_test/
 		
-	This tests the CNN Forward library by running both VGG19 and Alexnet on a single image and comparing the results with Pytorch Output
+	This tests the CNN Forward library by running both VGG19 and Alexnet on a single image and comparing the results with Pytorch output
 	
  3. **Test-3 Batch Image CNN Forward Test**
 	> Located under batch_test/
