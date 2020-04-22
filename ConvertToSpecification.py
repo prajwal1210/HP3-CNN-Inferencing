@@ -18,7 +18,7 @@ PRE_TRAINED_DIR = "./pretrained-models/"
 
 # Conv Layer Message
 def makeConv2DMessage(conv_layer, layer_callback):
-    """"
+    """
     Creates a Conv2D message in the specified protobuf format    
         Input : Pytorch nn.Conv2D object, Layer Object (defined in the proto specification) in which to store details of the Conv2D layer
         Result : Adds the appropriate parameters to the layer_callback object
@@ -53,7 +53,7 @@ def makeConv2DMessage(conv_layer, layer_callback):
 
 # Pooling Layer Message
 def makePool2DMessage(pool_layer, layer_callback, avg=False, adaptive=False):
-    """"
+    """
     Creates a Pool message in the specified protobuf format - Supports both Normal and Adaptive Pooling (Max and Average)
         Input : Pytorch nn.Pool2D object or nn.AdaptivePool2D,  Layer Object (defined in the proto specification) in which to store details of the Pool2D layer
         Result : Adds the appropriate parameters to the layer_callback object
@@ -79,7 +79,7 @@ def makePool2DMessage(pool_layer, layer_callback, avg=False, adaptive=False):
 
 # Linear Layer Message
 def makeFCMessage(fc_layer, layer_callback):
-    """"
+    """
     Creates a Linear Layer (FC) message in the specified protobuf format
         Input : Pytorch nn.Linear object,  Layer Object (defined in the proto specification) in which to store details of the Linear layer
         Result : Adds the appropriate parameters to the layer_callback object
@@ -108,7 +108,7 @@ def makeFCMessage(fc_layer, layer_callback):
 
 # ReLU Activation Message
 def makeReLUMessage(layer_callback):
-    """"
+    """
     Creates a ReLU Activation message in the specified protobuf format 
         Input : Pytorch nn.ReLU Object,  Layer Object (defined in the proto specification) in which to store details of the Activation layer
         Result : Adds the appropriate parameters to the layer_callback object
@@ -118,7 +118,7 @@ def makeReLUMessage(layer_callback):
 
 # Sigmoif Activation Message
 def makeSigmoidMessage(layer_callback):
-    """"
+    """
     Creates a Sigmoid Activation message in the specified protobuf format 
         Input : Pytorch nn.ReLU Object,  Layer Object (defined in the proto specification) in which to store details of the Activation layer
         Result : Adds the appropriate parameters to the layer_callback object
@@ -128,7 +128,7 @@ def makeSigmoidMessage(layer_callback):
 
 # DropOut Layer Message
 def makeDropoutMessage(dropout_layer, layer_callback):
-    """"
+    """
     Creates a Dropout message in the specified protobuf format 
         Input : Pytorch nn.Dropout Object,  Layer Object (defined in the proto specification) in which to store details of the Dropout layer
         Result : Adds the appropriate parameters to the layer_callback object
@@ -138,7 +138,7 @@ def makeDropoutMessage(dropout_layer, layer_callback):
 
 
 def createProtoSpecification(model, filename):
-    """"
+    """
     Creates and saves the Network information in a .pb file based the specified protobuf format 
         Input : Pytorch model (pre-trained model), Name of the file in which to store the model message
         Result : Saves the model with the given filename under the directory - PRE_TRAINED_DIR
@@ -207,7 +207,7 @@ def createProtoSpecification(model, filename):
 
 
 def createVGGSpecification(filename):
-    """"
+    """
     Saves the pretrained VGG-19 Model in the specified protobuf format 
         Input : Name of the file in which to store the model message
         Result : Saves the model with the given filename under the directory - PRE_TRAINED_DIR
@@ -217,7 +217,7 @@ def createVGGSpecification(filename):
 
 
 def createAlexNetSpecification(filename):
-    """"
+    """
     Saves the pretrained AlexNet Model in the specified protobuf format 
         Input : Name of the file in which to store the model message
         Result : Saves the model with the given filename under the directory - PRE_TRAINED_DIR
@@ -226,7 +226,7 @@ def createAlexNetSpecification(filename):
     createProtoSpecification(alex, filename)
 
 def createTestModeSpecification(filename):
-    """"
+    """
     Creates and saves a Toy Model for Testing in the specified protobuf format 
         Input : Name of the file in which to store the model message
         Result : Saves the model with the given filename under the directory - PRE_TRAINED_DIR

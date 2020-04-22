@@ -1,3 +1,10 @@
+#############################################################
+#  memoryAnalyzer.py:                                       #
+#  Analyzes and Plots the graph based on the logged files   #
+#                                                           #
+#  Author: Prajwal Singhania                                #
+#############################################################
+
 import os 
 import matplotlib
 if os.environ.get('DISPLAY','') == '':
@@ -19,6 +26,9 @@ PLOT_DIR = "./Plots/"
 
 
 def plotGPUData(mem_file, colors, plot_dir):
+    """
+    Given the specific algorithm's logfile name, colors of the plot, and plot directory : Plots the pattern of GPU usage
+    """
     plt.figure(figsize=(20,8))
     for i,k in enumerate(mem_file.keys()):
         Y = []

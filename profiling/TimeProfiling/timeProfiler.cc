@@ -1,3 +1,10 @@
+/************************************************************
+ * timeProfiler.cc:									                        *
+ * Logger to run the forward pass of the inferencing engine *
+ *                                                          *
+ * Author: Prajwal Singhania                                *
+ ************************************************************/
+
 #include <iostream>
 #include <fstream>
 #include <string>
