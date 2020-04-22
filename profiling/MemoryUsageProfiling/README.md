@@ -54,7 +54,6 @@ The bash script is the main logger which before running the forward pass binary 
 
 From the plot above, we can draw the following conclusions:
 * CUDNN, Im2Col and Direct Convolutions require very less memory
-* Since CUDNN and Direct don't loop on the batch-size, we expect the memory to scale linearly [We haven't tested for batchsize = 8 yet]
-* Im2Col does loop on batchsize so we expect the memory to be the same for higher batchsizes
+* Since CUDNN, Im2Col and Direct don't loop on the batch-size, we expect the memory to scale linearly [We haven't tested for batchsize = 8 yet]
 * FFT and Winograd use significantly larger memory. This also explains why they have higher overheads. Both of these algorithms are looping on the batch in our implementation, hence, we expect the requirement to remain around the same
 * This huge memory requirement of FFT and Winograd was a bottleneck due to which we could not parallelize the same algorithms on multiple batches directly
