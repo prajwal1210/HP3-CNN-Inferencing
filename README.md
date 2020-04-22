@@ -22,8 +22,8 @@ Here, we briefly explain the skeleton directory structure of the project. The co
 │   ├── data/                   : Contains the dataset
 │   ├── batch_test/             : Contains the Batch Image CNN Forward Test files
 │   ├── cnn_forward_test/       : Contains the Single Image CNN Forward Test files
-│   ├── operations_test/		: Contains the Batch Image CNN Forward Test files
-│   ├── cnn_forward.h			: Library that wraps the forward pass and model loading
+│   ├── operations_test/        : Contains the Batch Image CNN Forward Test files
+│   ├── cnn_forward.h           : Library that wraps the forward pass and model loading
 │   ├── cnn_forward.cc		
 │   ├── data_util.h             : Data Loader Library
 │   ├── data_util.cc
@@ -160,8 +160,8 @@ This profiling setup runs a forward pass of the VGG and AlexNet architecture ove
 * **Compilation:**   `$ make`  [Can be skipped if compiled through the global makefile]
 * **Running the C++ based logger:**
 	```
-	$ make run_vgg		# For VGG
-	$ make run_alex		# For AlexNet
+	$ make run_vgg      # For VGG
+	$ make run_alex     # For AlexNet
 	```
 	By default, this code runs 3 iterations of each batchsize and kernel setting for more statistically sound results. This can be changed, however we faced some issues in Colab when increasing it beyon 3 so that should be kept in mind. To change this default:
 	```
